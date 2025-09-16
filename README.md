@@ -199,21 +199,21 @@ Acceptance criteria:
 
 ### Backlog Ordering Rationale
 We preferred our backlog based on *core purposes and impact *:
-MVP first - citizens who look at citizens, officers who submit suggestions.
-The characteristics of the engagement next - reactions, comments, support/opposition mood.
-Analysis and dashboards previous - Business and Politician Metrics.
+- MVP first - citizens who look at citizens, officers who submit suggestions.
+- The characteristics of the engagement next - reactions, comments, support/opposition mood.
+- Analysis and dashboards previous - Business and Politician Metrics.
 This order ensures that the product is immediately usable, so advanced features can settle in subsequent repetitions.
 
 
 ## Definition of Ready (DoR)
 A Product Backlog item (PBI) is considered "clear" when it completes everyone:
-Title - short and descriptive.
-User Story - It is written as: "As a < stakehold>, I want <function> so that <the flavor>."
-Details / approval criteria - Clear testable conditions are listed.
+- Title - short and descriptive.
+- User Story - It is written as: "As a < stakehold>, I want <function> so that <the flavor>."
+- Details / approval criteria - Clear testable conditions are listed.
 Story point estimate - Relative trial was recorded in the approximate and crucial tracker.
 
 
 ## estimate approach
 We estimated our PBI by using story points Planning poker Activity.
-The values ​​are from 1 (trivial) to 13 (complex).
-Estimates were made by the entire team to ensure shared understanding.
+- The values ​​are from 1 (trivial) to 13 (complex).
+- Estimates were made by the entire team to ensure shared understanding.
