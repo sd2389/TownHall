@@ -81,7 +81,7 @@ Acceptance criteria:
 * Events appear in the chronological list.
 * Each event shows the title, date, time and short description.
 * Events can be clicked for details.
-* Estimate:* 3 points
+* Estimate: 3 points
 
 
 
@@ -94,7 +94,7 @@ Acceptance criteria:
 * Each event map button shows the choice/disliking button.
 * Reactions are updated in real time.
 * The user can react only once, but can change the response.
-* Estimate:* 2 points
+* Estimate: 2 points
 
 
 
@@ -107,7 +107,7 @@ Acceptance criteria:
 * The comment box is available on the event details page.
 * The user must be logged in to comment.
 * Comments are displayed in reverse chronological order.
-* Estimate:* 5 points
+* Estimate: 5 points
 
 
 
@@ -120,7 +120,7 @@ Acceptance criteria:
 * Professional role can reach the form "Event Create Event".
 * Forms include title, details, date and alternative image.
 * The incident must be approved by the administrator before publishing.
-* Estimate:* 5 points
+* Estimate: 5 points
 
 
 
@@ -133,7 +133,7 @@ Acceptance criteria:
 * The role of a politician can submit a proposal with a title, summary and full lesson.
 * The proposal is displayed on the citizen dashboard.
 * Show the date of submission of the proposal and the name of the spokesman.
-* Estimate:* 8 points
+* Estimate: 8 points
 
 ### 6. Comment on the bill offer
 
@@ -144,7 +144,7 @@ Acceptance criteria:
 * Login companies can post.
 * Comments are shown in the threaded format under the proposal.
 * Moderation system flag Incorrect material.
-* Estimate:* 5 points
+* Estimate: 5 points
 
 
 
@@ -157,7 +157,7 @@ Acceptance criteria:
 * Each bill has support/opposition stake.
 * Residents can only vote per bill once.
 * The results are shown as a single percentage diagram.
-* Estimate:* 3 points
+* Estimate: 3 points
 
 
 ### 8. Dashboard for business engagement
@@ -169,7 +169,7 @@ Acceptance criteria:
 * The Dashboard event shows the number of views, choices/disapproves and comments.
 * Statistics update at least daily.
 * Only available for the event Creator.
-* Estimate:* 8 points
+* Estimate: 8 points
 
 
 
@@ -179,10 +179,10 @@ User Story: As A User, I will safely log in to confirm my identity and role.
 
 Acceptance criteria:
 
-* Log in with e -mail + password encrypted storage.
+* Log in with e-mail + password encrypted storage.
 * The rolls assigned (Civil / Business / Politician / Administrator).
 * Users only see the features allowed by their role.
-* Estimate:* 8 points
+* Estimate: 8 points
 
 
 
@@ -199,23 +199,21 @@ Acceptance criteria:
 
 ### Backlog Ordering Rationale
 We preferred our backlog based on *core purposes and impact *:
-1. * MVP first * - citizens who look at citizens, officers who submit suggestions.
-2. * The characteristics of the engagement next * - reactions, comments, support/opposition mood.
-3. * Analysis and dashboards previous * - Business and Politician Metrics.
+MVP first - citizens who look at citizens, officers who submit suggestions.
+The characteristics of the engagement next - reactions, comments, support/opposition mood.
+Analysis and dashboards previous - Business and Politician Metrics.
 This order ensures that the product is immediately usable, so advanced features can settle in subsequent repetitions.
-
 
 
 ## Definition of Ready (DoR)
 A Product Backlog item (PBI) is considered "clear" when it completes everyone:
-- * Title * - short and descriptive.
-- * User Story * - It is written as: "As a < stakehold>, I want <function> so that <the flavor>."
-- * Details / approval criteria * - Clear testable conditions are listed.
-- * Story point estimate * - Relative trial was recorded in the approximate and crucial tracker.
-
+Title - short and descriptive.
+User Story - It is written as: "As a < stakehold>, I want <function> so that <the flavor>."
+Details / approval criteria - Clear testable conditions are listed.
+Story point estimate - Relative trial was recorded in the approximate and crucial tracker.
 
 
 ## estimate approach
-We estimated our PBI by using * story points * Planning poker * Activity.
-- The values ​​are from 1 (trivial) to 13 (complex).
-- Estimates were made by the entire team to ensure shared understanding.
+We estimated our PBI by using story points Planning poker Activity.
+The values ​​are from 1 (trivial) to 13 (complex).
+Estimates were made by the entire team to ensure shared understanding.
