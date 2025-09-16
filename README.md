@@ -1,21 +1,21 @@
-,,
+
 
 # Townhall - Civic Engagement Platform
 
 ## Team members and roles
 
-[Yesha] - Product Owner
-[Jose] - Scrum Master
-[Smit] - Developer
-[Evan] - Developer
-[Nandni] - QA and document manager
+1) [Yesha] - Product Owner
+2) [Jose] - Scrum Master
+3) [Smit] - Developer
+4) [Evan] - Developer
+5) [Nandni] - QA and document manager
 
-''
+
 
 ## Product Backlog
 Our backlog is maintained in Pivotal Tracker: https://github.com/users/sd2389/projects/3
 
-,,
+
 
 ## product vision
 
@@ -25,7 +25,7 @@ Townhall is a civilian engagement hub that builds the inhabitants, government of
 ** Foundation Vision (MVP): **
 For the first repetition, we will distribute active problems (with AI summaries), easy vote and comment, and a resident feed of an administrator portal, where the authorities can upload the proposals and see the reaction together with the diagram.
 
-,,
+
 
 ## stakeholder
 
@@ -33,8 +33,7 @@ For the first repetition, we will distribute active problems (with AI summaries)
 2. Government official (gratitude) **-Guidance of decision-making requires structured response and analysis.
 3. Business owner- Permissions/events require visibility for their businesses and step-by-step guides.
 
-,,
-Example
+
 ## User Personality (resident)
 
 ** Name: Maria Lopez
@@ -84,7 +83,7 @@ Acceptance criteria:
 * Events can be clicked for details.
 * Estimate:* 3 points
 
-,,
+
 
 ### 2. Reply to events
 
@@ -97,7 +96,7 @@ Acceptance criteria:
 * The user can react only once, but can change the response.
 * Estimate:* 2 points
 
-,,
+
 
 ### 3. Comment events
 
@@ -110,7 +109,7 @@ Acceptance criteria:
 * Comments are displayed in reverse chronological order.
 * Estimate:* 5 points
 
-,,
+
 
 ### 4. Create a business event
 
@@ -123,7 +122,7 @@ Acceptance criteria:
 * The incident must be approved by the administrator before publishing.
 * Estimate:* 5 points
 
-,,
+
 
 ### 5. Post a bill offer
 
@@ -147,7 +146,7 @@ Acceptance criteria:
 * Moderation system flag Incorrect material.
 * Estimate:* 5 points
 
-,,
+
 
 ### 7. Support/Oppose the bill
 
@@ -172,7 +171,7 @@ Acceptance criteria:
 * Only available for the event Creator.
 * Estimate:* 8 points
 
-,,
+
 
 ### 9. Safe login and roles
 
@@ -185,7 +184,7 @@ Acceptance criteria:
 * Users only see the features allowed by their role.
 * Estimate:* 8 points
 
-,,
+
 
 ### 10. Administrator moderation equipment
 
@@ -205,7 +204,7 @@ We preferred our backlog based on *core purposes and impact *:
 3. * Analysis and dashboards previous * - Business and Politician Metrics.
 This order ensures that the product is immediately usable, so advanced features can settle in subsequent repetitions.
 
-,,
+
 
 ## Definition of Ready (DoR)
 A Product Backlog item (PBI) is considered "clear" when it completes everyone:
@@ -214,7 +213,7 @@ A Product Backlog item (PBI) is considered "clear" when it completes everyone:
 - * Details / approval criteria * - Clear testable conditions are listed.
 - * Story point estimate * - Relative trial was recorded in the approximate and crucial tracker.
 
-,,
+
 
 ## estimate approach
 We estimated our PBI by using * story points * Planning poker * Activity.
