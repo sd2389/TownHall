@@ -27,45 +27,45 @@ For the first repetition, we will distribute active problems (with AI summaries)
 
 
 
-## stakeholder
+## Stakeholder
 
 1. Residents- Easy access to local problems requires easy access and is a way to vote to their opinion.
-2. Government official (gratitude) **-Guidance of decision-making requires structured response and analysis.
+2. Government official (gratitude) -Guidance of decision-making requires structured response and analysis.
 3. Business owner- Permissions/events require visibility for their businesses and step-by-step guides.
 
 
 ## User Personality (resident)
 
-** Name: Maria Lopez
-** Age: 34
-** Neighborhood: Ward 3
-** Background: Full time work, local schools have two children.
-** Need: wants to understand the government's proposal quickly, vote on issues affecting his neighborhood and sometimes discovering local events.
-** Pain points: Long -proposal documents, limited time, vague response channel.
-** Objective: Use regular English sums, share meaning with minimal attempts, feel his voice is counted.
+- Name: Maria Lopez
+- Age: 34
+- Neighborhood: Ward 3
+- Background: Full time work, local schools have two children.
+- Need: wants to understand the government's proposal quickly, vote on issues affecting his neighborhood and sometimes discovering local events.
+- Pain points: Long -proposal documents, limited time, vague response channel.
+- Objective: Use regular English sums, share meaning with minimal attempts, feel his voice is counted.
 
 
 ## User Personality (business owner)
 
-** Name: Priya Singh
-** Age: 42
-** Business: Priya's Café
-** Neighborhood: Ward 2
-** Background: Runs a small café, employs 5 people, active in local business association.
-** Need: Wants to stay informed about new regulations, apply for event permits, and promote her business to residents.
-** Pain points: Difficult permit processes, lack of clear communication from city officials, limited ways to reach local customers.
-** Objective: Easily access step-by-step guides for permits, receive timely updates on regulations, and advertise local events or promotions.
+- Name: Priya Singh
+- Age: 42
+- Business: Priya's Café
+- Neighborhood: Ward 2
+- Background: Runs a small café, employs 5 people, active in local business association.
+- Need: Wants to stay informed about new regulations, apply for event permits, and promote her business to residents.
+- Pain points: Difficult permit processes, lack of clear communication from city officials, limited ways to reach local customers.
+- Objective: Easily access step-by-step guides for permits, receive timely updates on regulations, and advertise local events or promotions.
 
 ## User Personality (government official)
 
-** Name: David Kim
-** Age: 50
-** Role: City Planning Officer
-** Department: Urban Development
-** Background: Oversees local development proposals, responsible for community outreach and feedback collection.
-** Need: Needs a structured way to present proposals, gather resident feedback, and analyze public sentiment efficiently.
-** Pain points: Low engagement from residents, unstructured feedback, time-consuming manual analysis.
-** Objective: Use AI-generated summaries to communicate proposals, visualize community responses, and make data-driven decisions quickly.
+- Name: David Kim
+- Age: 50
+- Role: City Planning Officer
+- Department: Urban Development
+- Background: Oversees local development proposals, responsible for community outreach and feedback collection.
+- Need: Needs a structured way to present proposals, gather resident feedback, and analyze public sentiment efficiently.
+- Pain points: Low engagement from residents, unstructured feedback, time-consuming manual analysis.
+- Objective: Use AI-generated summaries to communicate proposals, visualize community responses, and make data-driven decisions quickly.
 
 __________________
 
