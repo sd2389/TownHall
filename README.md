@@ -217,3 +217,58 @@ Story point estimate - Relative trial was recorded in the approximate and crucia
 We estimated our PBI by using story points Planning poker Activity.
 - The values ​​are from 1 (trivial) to 13 (complex).
 - Estimates were made by the entire team to ensure shared understanding.
+
+---
+
+## Quick Start
+
+For detailed setup instructions, please see [setup.md](setup.md)
+
+**TL;DR:**
+1. Clone the repository: `git clone https://github.com/sd2389/TownHall.git`
+2. Follow the setup guide in `setup.md`
+3. Start the backend: `python manage.py runserver`
+4. Start the frontend: `cd frontend && npm run dev`
+
+## Technology Stack
+
+- **Backend**: Django (Python)
+- **Frontend**: Next.js 15 (React + TypeScript)
+- **Database**: MySQL
+- **Styling**: Tailwind CSS + shadcn/ui
+- **Animations**: Framer Motion
+
+## Project Structure
+
+```
+TownHall/
+├── frontend/          # Next.js React application
+├── businessowner/     # Django app for business owners
+├── citizen/           # Django app for citizens
+├── government/        # Django app for government officials
+├── townhall_project/  # Django project settings
+├── manage.py         # Django management script
+├── requirements.txt  # Python dependencies
+├── setup.md         # Detailed setup instructions
+└── README.md        # This file
+```
+
+## Features
+
+### Citizen Portal
+- File and track complaints
+- Vote on community proposals
+- View announcements
+- Access municipal services
+
+### Business Portal
+- Manage business licenses
+- Submit permit applications
+- View business-related announcements
+- Track application status
+
+### Government Portal
+- Manage citizen complaints
+- Create announcements
+- Review business applications
+- Generate reports
