@@ -100,33 +100,54 @@ export default function Header({ userType, userName, userEmail }: HeaderProps) {
             </>
           ) : userType === "business" ? (
             <>
-              <Button variant="ghost" className="text-sm font-medium">
-                Dashboard
-              </Button>
-              <Button variant="ghost" className="text-sm font-medium">
-                Licenses
-              </Button>
-              <Button variant="ghost" className="text-sm font-medium">
-                Complaints
-              </Button>
-              <Button variant="ghost" className="text-sm font-medium">
-                Events
-              </Button>
+              <Link href="/business">
+                <Button variant="ghost" className="text-sm font-medium">
+                  Dashboard
+                </Button>
+              </Link>
+              <Link href="/business/licenses">
+                <Button variant="ghost" className="text-sm font-medium">
+                  Licenses
+                </Button>
+              </Link>
+              <Link href="/business/permits">
+                <Button variant="ghost" className="text-sm font-medium">
+                  Permits
+                </Button>
+              </Link>
+              <Link href="/business/events">
+                <Button variant="ghost" className="text-sm font-medium">
+                  Events
+                </Button>
+              </Link>
+              <Link href="/business/applications">
+                <Button variant="ghost" className="text-sm font-medium">
+                  Applications
+                </Button>
+              </Link>
             </>
           ) : userType === "government" ? (
             <>
-              <Button variant="ghost" className="text-sm font-medium">
-                Dashboard
-              </Button>
-              <Button variant="ghost" className="text-sm font-medium">
-                Complaints
-              </Button>
-              <Button variant="ghost" className="text-sm font-medium">
-                Announcements
-              </Button>
-              <Button variant="ghost" className="text-sm font-medium">
-                Reports
-              </Button>
+              <Link href="/government">
+                <Button variant="ghost" className="text-sm font-medium">
+                  Dashboard
+                </Button>
+              </Link>
+              <Link href="/government/complaints">
+                <Button variant="ghost" className="text-sm font-medium">
+                  Complaints
+                </Button>
+              </Link>
+              <Link href="/government/announcements">
+                <Button variant="ghost" className="text-sm font-medium">
+                  Announcements
+                </Button>
+              </Link>
+              <Link href="/government/reports">
+                <Button variant="ghost" className="text-sm font-medium">
+                  Reports
+                </Button>
+              </Link>
             </>
           ) : (
             <>
@@ -239,33 +260,54 @@ export default function Header({ userType, userName, userEmail }: HeaderProps) {
               </>
             ) : userType === "business" ? (
               <>
-                <Button variant="ghost" className="w-full justify-start text-sm">
-                  Dashboard
-                </Button>
-                <Button variant="ghost" className="w-full justify-start text-sm">
-                  Licenses
-                </Button>
-                <Button variant="ghost" className="w-full justify-start text-sm">
-                  Complaints
-                </Button>
-                <Button variant="ghost" className="w-full justify-start text-sm">
-                  Events
-                </Button>
+                <Link href="/business">
+                  <Button variant="ghost" className="w-full justify-start text-sm">
+                    Dashboard
+                  </Button>
+                </Link>
+                <Link href="/business/licenses">
+                  <Button variant="ghost" className="w-full justify-start text-sm">
+                    Licenses
+                  </Button>
+                </Link>
+                <Link href="/business/permits">
+                  <Button variant="ghost" className="w-full justify-start text-sm">
+                    Permits
+                  </Button>
+                </Link>
+                <Link href="/business/events">
+                  <Button variant="ghost" className="w-full justify-start text-sm">
+                    Events
+                  </Button>
+                </Link>
+                <Link href="/business/applications">
+                  <Button variant="ghost" className="w-full justify-start text-sm">
+                    Applications
+                  </Button>
+                </Link>
               </>
             ) : userType === "government" ? (
               <>
-                <Button variant="ghost" className="w-full justify-start text-sm">
-                  Dashboard
-                </Button>
-                <Button variant="ghost" className="w-full justify-start text-sm">
-                  Complaints
-                </Button>
-                <Button variant="ghost" className="w-full justify-start text-sm">
-                  Announcements
-                </Button>
-                <Button variant="ghost" className="w-full justify-start text-sm">
-                  Reports
-                </Button>
+                <Link href="/government">
+                  <Button variant="ghost" className="w-full justify-start text-sm">
+                    Dashboard
+                  </Button>
+                </Link>
+                <Link href="/government/complaints">
+                  <Button variant="ghost" className="w-full justify-start text-sm">
+                    Complaints
+                  </Button>
+                </Link>
+                <Link href="/government/announcements">
+                  <Button variant="ghost" className="w-full justify-start text-sm">
+                    Announcements
+                  </Button>
+                </Link>
+                <Link href="/government/reports">
+                  <Button variant="ghost" className="w-full justify-start text-sm">
+                    Reports
+                  </Button>
+                </Link>
               </>
             ) : (
               <>

@@ -1,7 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,19 +18,26 @@ import {
   Users, 
   Shield,
   Mail,
-  Lock
+  Lock,
+  AlertCircle
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Layout from "@/components/layout/Layout";
+import { useAuth } from "@/contexts/AuthContext";
 
-export default function LoginPage() {
+function LoginFormComponent() {
   const [showPassword, setShowPassword] = useState(false);
   const [userType, setUserType] = useState("");
+  const [error, setError] = useState("");
   const [formData, setFormData] = useState({
     email: "",
     password: "",
     rememberMe: false
   });
+
+  const { login, isLoading } = useAuth();
+  const router = useRouter();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -39,10 +47,27 @@ export default function LoginPage() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle login logic here
-    console.log("Login attempt:", { ...formData, userType });
+    setError("");
+    
+    if (!userType) {
+      setError("Please select your account type");
+      return;
+    }
+
+    const success = await login(formData.email, formData.password, userType);
+    if (success) {
+      // Redirect to appropriate portal based on user type
+      const redirectPaths = {
+        citizen: '/citizen',
+        business: '/business',
+        government: '/government'
+      };
+      router.push(redirectPaths[userType as keyof typeof redirectPaths] || '/');
+    } else {
+      setError("Invalid credentials or account type mismatch");
+    }
   };
 
   const getUserTypeIcon = (type: string) => {
@@ -107,6 +132,17 @@ export default function LoginPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mb-4 p-3 bg-red-100 border border-red-300 rounded-lg flex items-center gap-2 text-red-700"
+                  >
+                    <AlertCircle className="h-4 w-4" />
+                    {error}
+                  </motion.div>
+                )}
+                
                 <form onSubmit={handleSubmit} className="space-y-6">
                   {/* User Type Selection */}
                   <div className="space-y-2">
@@ -208,9 +244,9 @@ export default function LoginPage() {
                   </div>
 
                   {/* Login Button */}
-                  <Button type="submit" className="w-full" size="lg">
+                  <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
                     <LogIn className="mr-2 h-4 w-4" />
-                    Sign In
+                    {isLoading ? "Signing In..." : "Sign In"}
                   </Button>
 
                   {/* User Type Indicator */}
@@ -278,4 +314,11 @@ export default function LoginPage() {
       </div>
     </Layout>
   );
+}
+
+// Disable SSR to prevent hydration issues
+const LoginForm = dynamic(() => Promise.resolve(LoginFormComponent), { ssr: false });
+
+export default function LoginPage() {
+  return <LoginForm />;
 }

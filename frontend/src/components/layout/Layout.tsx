@@ -22,8 +22,12 @@ export default function Layout({
 }: LayoutProps) {
   return (
     <div className="min-h-screen flex flex-col">
-      <Header userType={userType} userName={userName} userEmail={userEmail} />
+      {/* Only show Header when PortalNavigation is not shown */}
+      {!showPortalNav && (
+        <Header userType={userType} userName={userName} userEmail={userEmail} />
+      )}
       
+      {/* Show PortalNavigation when requested */}
       {showPortalNav && (
         <PortalNavigation currentUserType={userType} userName={userName} />
       )}

@@ -46,6 +46,7 @@ import {
   Building2
 } from "lucide-react";
 import Layout from "@/components/layout/Layout";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import React, { useState, useEffect } from "react";
 
 export default function CitizenPortal() {
@@ -322,7 +323,8 @@ export default function CitizenPortal() {
   };
 
   return (
-    <Layout userType="citizen" userName="Maria Lopez" userEmail="maria.lopez@email.com" showPortalNav={false}>
+    <ProtectedRoute allowedRoles={['citizen']}>
+      <Layout userType="citizen" userName="Maria Lopez" userEmail="maria.lopez@email.com" showPortalNav={true}>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
 
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
@@ -883,5 +885,6 @@ export default function CitizenPortal() {
         </div>
       </div>
     </Layout>
+    </ProtectedRoute>
   );
 }
