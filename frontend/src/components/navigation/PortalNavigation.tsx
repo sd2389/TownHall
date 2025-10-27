@@ -23,7 +23,8 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
-  ChevronDown
+  ChevronDown,
+  Phone
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -81,31 +82,39 @@ export default function PortalNavigation({ currentUserType, userName }: PortalNa
 
   // Role-specific navigation items
   const getNavigationItems = () => {
-    switch (userRole) {
-      case "citizen":
-        return [
-          { name: "Complaints", href: "/citizen/complaints", icon: FileText },
-          { name: "Services", href: "/citizen/services", icon: ClipboardList },
-          { name: "Notifications", href: "/citizen/notifications", icon: Bell },
-          { name: "File New", href: "/citizen/file-new", icon: AlertCircle }
-        ];
-      case "business":
-        return [
-          { name: "Applications", href: "/business/applications", icon: ClipboardList },
-          { name: "Licenses", href: "/business/licenses", icon: CreditCard },
-          { name: "Permits", href: "/business/permits", icon: CheckCircle },
-          { name: "Events", href: "/business/events", icon: Calendar }
-        ];
-      case "government":
-        return [
-          { name: "Dashboard", href: "/government", icon: BarChart3 },
-          { name: "Complaints", href: "/government/complaints", icon: FileText },
-          { name: "Announcements", href: "/government/announcements", icon: Bell },
-          { name: "Reports", href: "/government/reports", icon: TrendingUp }
-        ];
-      default:
-        return [];
-    }
+    // Common emergency link
+    const emergencyLink = { name: "Emergency", href: "/emergency", icon: Phone };
+    
+    const roleNavItems = (() => {
+      switch (userRole) {
+        case "citizen":
+          return [
+            { name: "Complaints", href: "/citizen/complaints", icon: FileText },
+            { name: "Services", href: "/citizen/services", icon: ClipboardList },
+            { name: "Notifications", href: "/citizen/notifications", icon: Bell },
+            { name: "File New", href: "/citizen/file-new", icon: AlertCircle }
+          ];
+        case "business":
+          return [
+            { name: "Applications", href: "/business/applications", icon: ClipboardList },
+            { name: "Licenses", href: "/business/licenses", icon: CreditCard },
+            { name: "Permits", href: "/business/permits", icon: CheckCircle },
+            { name: "Events", href: "/business/events", icon: Calendar }
+          ];
+        case "government":
+          return [
+            { name: "Dashboard", href: "/government", icon: BarChart3 },
+            { name: "Complaints", href: "/government/complaints", icon: FileText },
+            { name: "Announcements", href: "/government/announcements", icon: Bell },
+            { name: "Reports", href: "/government/reports", icon: TrendingUp }
+          ];
+        default:
+          return [];
+      }
+    })();
+    
+    // Prepend emergency link to all role navigation items
+    return [emergencyLink, ...roleNavItems];
   };
 
   const navigationItems = getNavigationItems();
@@ -183,13 +192,18 @@ export default function PortalNavigation({ currentUserType, userName }: PortalNa
             {navigationItems.map((item) => {
               const ItemIcon = item.icon;
               const isActive = isItemActive(item.href);
+              const isEmergency = item.name === "Emergency";
               
               return (
                 <Link
                   key={item.name}
                   href={item.href}
                   className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive
+                    isEmergency
+                      ? isActive
+                        ? 'text-red-700 bg-red-50'
+                        : 'text-red-600 hover:text-red-700 hover:bg-red-50'
+                      : isActive
                       ? `${currentPortal.color.replace('bg-', 'text-')} bg-gray-100`
                       : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
                   }`}
@@ -318,13 +332,18 @@ export default function PortalNavigation({ currentUserType, userName }: PortalNa
             {navigationItems.map((item) => {
               const ItemIcon = item.icon;
               const isActive = isItemActive(item.href);
+              const isEmergency = item.name === "Emergency";
               
               return (
                 <Link
                   key={item.name}
                   href={item.href}
                   className={`flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
-                    isActive
+                    isEmergency
+                      ? isActive
+                        ? 'text-red-700 bg-red-50'
+                        : 'text-red-600 hover:text-red-700 hover:bg-red-50'
+                      : isActive
                       ? `${currentPortal.color.replace('bg-', 'text-')} bg-gray-100`
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                   }`}

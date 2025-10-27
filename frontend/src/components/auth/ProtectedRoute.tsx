@@ -6,7 +6,7 @@ import { useEffect, ReactNode } from 'react';
 
 interface ProtectedRouteProps {
   children: ReactNode;
-  allowedRoles?: ('citizen' | 'business' | 'government')[];
+  allowedRoles?: ('citizen' | 'business' | 'government' | 'superuser')[];
   redirectTo?: string;
 }
 

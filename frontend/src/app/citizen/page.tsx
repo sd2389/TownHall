@@ -48,9 +48,11 @@ import {
 } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { useAuth } from "@/contexts/AuthContext";
 import React, { useState, useEffect } from "react";
 
 export default function CitizenPortal() {
+  const { user } = useAuth();
   const [selectedComplaint, setSelectedComplaint] = useState<any>(null);
   const [selectedProposal, setSelectedProposal] = useState<any>(null);
   const [newComment, setNewComment] = useState("");
@@ -325,7 +327,7 @@ export default function CitizenPortal() {
 
   return (
     <ProtectedRoute allowedRoles={['citizen']}>
-      <Layout userType="citizen" userName="Maria Lopez" userEmail="maria.lopez@email.com" showPortalNav={true}>
+      <Layout userType="citizen" userName={`${user?.firstName || ''} ${user?.lastName || ''}`} userEmail={user?.email || ''} showPortalNav={true}>
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-50 dark:from-gray-900 dark:via-blue-950/20 dark:to-gray-900">
 
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10">
@@ -341,7 +343,7 @@ export default function CitizenPortal() {
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
-                    Welcome back, Maria! 👋
+                    Welcome back, {user?.firstName}! 👋
                   </h1>
                   <p className="text-blue-100 text-sm sm:text-base">
                     Track your complaints, participate in proposals, and stay engaged with your community

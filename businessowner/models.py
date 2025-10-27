@@ -10,6 +10,7 @@ class BusinessOwnerProfile(models.Model):
     business_type = models.CharField(max_length=100)
     phone_number = models.CharField(max_length=15, blank=True)
     business_address = models.TextField()
+    billing_address = models.JSONField(default=dict, blank=True, help_text="Structured billing address for verification")
     website = models.URLField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

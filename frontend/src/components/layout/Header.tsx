@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Building2, Users, Shield, Menu, X, Home } from "lucide-react";
+import { Building2, Users, Shield, Menu, X, Home, Phone } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
 
@@ -91,6 +91,12 @@ export default function Header({ userType, userName, userEmail }: HeaderProps) {
               Home
             </Button>
           </Link>
+          <Link href="/emergency">
+            <Button variant="ghost" className="text-sm font-medium flex items-center gap-2 text-red-600 hover:text-red-700">
+              <Phone className="h-4 w-4" />
+              Emergency
+            </Button>
+          </Link>
           {userType === "citizen" ? (
             <>
               <Link href="/citizen/complaints"><Button variant="ghost" className="text-sm font-medium">My Complaints</Button></Link>
@@ -131,6 +137,12 @@ export default function Header({ userType, userName, userEmail }: HeaderProps) {
               <Link href="/government">
                 <Button variant="ghost" className="text-sm font-medium">
                   Dashboard
+                </Button>
+              </Link>
+              <Link href="/admin">
+                <Button variant="ghost" className="text-sm font-medium bg-purple-100 hover:bg-purple-200">
+                  <Shield className="h-4 w-4 mr-1" />
+                  Admin Panel
                 </Button>
               </Link>
               <Link href="/government/complaints">
@@ -264,6 +276,12 @@ export default function Header({ userType, userName, userEmail }: HeaderProps) {
                 Home
               </Button>
             </Link>
+            <Link href="/emergency">
+              <Button variant="ghost" className="w-full justify-start text-sm flex items-center gap-2 text-red-600">
+                <Phone className="h-4 w-4" />
+                Emergency
+              </Button>
+            </Link>
             {userType === "citizen" ? (
               <>
                 <Link href="/citizen/complaints"><Button variant="ghost" className="w-full justify-start text-sm">My Complaints</Button></Link>
@@ -304,6 +322,12 @@ export default function Header({ userType, userName, userEmail }: HeaderProps) {
                 <Link href="/government">
                   <Button variant="ghost" className="w-full justify-start text-sm">
                     Dashboard
+                  </Button>
+                </Link>
+                <Link href="/admin">
+                  <Button variant="ghost" className="w-full justify-start text-sm bg-purple-100">
+                    <Shield className="h-4 w-4 mr-2" />
+                    Admin Panel
                   </Button>
                 </Link>
                 <Link href="/government/complaints">

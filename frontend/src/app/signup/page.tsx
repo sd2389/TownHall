@@ -54,6 +54,14 @@ export default function SignupPage() {
     password: "",
     confirmPassword: "",
     agreeToTerms: false,
+    townId: "",
+    
+    // Address fields (structured)
+    streetAddress: "",
+    aptSuite: "",
+    city: "",
+    state: "",
+    zipCode: "",
     
     // Citizen specific
     address: "",
@@ -75,6 +83,9 @@ export default function SignupPage() {
     // ID Verification
     idNumber: "",
   });
+  
+  const [availableTowns, setAvailableTowns] = useState<any[]>([]);
+  const [isLoadingTowns, setIsLoadingTowns] = useState(false);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -137,6 +148,28 @@ export default function SignupPage() {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+  
+  // Fetch active towns
+  useEffect(() => {
+    const fetchTowns = async () => {
+      setIsLoadingTowns(true);
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/towns/active/`);
+        if (response.ok) {
+          const towns = await response.json();
+          setAvailableTowns(towns);
+        }
+      } catch (error) {
+        console.error('Error fetching towns:', error);
+      } finally {
+        setIsLoadingTowns(false);
+      }
+    };
+    
+    if (isMounted && userType) {
+      fetchTowns();
+    }
+  }, [isMounted, userType]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,13 +192,23 @@ export default function SignupPage() {
       lastName: formData.lastName,
       userType: userType,
       phone: formData.phone,
+      townId: formData.townId,
+      // Structured address fields
+      streetAddress: formData.streetAddress,
+      aptSuite: formData.aptSuite,
+      city: formData.city,
+      state: formData.state,
+      zipCode: formData.zipCode,
+      // Citizen specific
       address: formData.address,
       dateOfBirth: formData.dateOfBirth,
+      // Business specific
       businessName: formData.businessName,
       businessType: formData.businessType,
       businessAddress: formData.businessAddress,
       businessRegistrationNumber: formData.businessRegistrationNumber,
       website: formData.website,
+      // Government specific
       employeeId: formData.employeeId,
       department: formData.department,
       position: formData.position,
@@ -319,6 +362,32 @@ export default function SignupPage() {
                 />
               </div>
             </div>
+
+            {/* Town Selection */}
+            {userType && (
+              <div className="space-y-2">
+                <Label htmlFor="townId">Select Your Town *</Label>
+                {isLoadingTowns ? (
+                  <div className="text-sm text-muted-foreground">Loading towns...</div>
+                ) : (
+                  <Select 
+                    value={formData.townId} 
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, townId: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select your town" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableTowns.map((town) => (
+                        <SelectItem key={town.id} value={town.id.toString()}>
+                          {town.name}, {town.state}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            )}
           </div>
         );
 
@@ -389,8 +458,77 @@ export default function SignupPage() {
             {/* User Type Specific Fields */}
             {userType === "citizen" && (
               <>
+                {/* Structured Address */}
+                <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                  <h3 className="font-semibold text-sm">Billing Address</h3>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="streetAddress">Street Address *</Label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="streetAddress"
+                        name="streetAddress"
+                        placeholder="Street address"
+                        value={formData.streetAddress}
+                        onChange={handleInputChange}
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="aptSuite">Apt/Suite/Unit</Label>
+                    <Input
+                      id="aptSuite"
+                      name="aptSuite"
+                      placeholder="Apt, suite, unit, etc."
+                      value={formData.aptSuite}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="city">City *</Label>
+                      <Input
+                        id="city"
+                        name="city"
+                        placeholder="City"
+                        value={formData.city}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="state">State *</Label>
+                      <Input
+                        id="state"
+                        name="state"
+                        placeholder="State"
+                        value={formData.state}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="zipCode">ZIP Code *</Label>
+                    <Input
+                      id="zipCode"
+                      name="zipCode"
+                      placeholder="ZIP code"
+                      value={formData.zipCode}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="address">Address</Label>
+                  <Label htmlFor="address">Address (Legacy)</Label>
                   <div className="relative">
                     <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Textarea
@@ -443,6 +581,76 @@ export default function SignupPage() {
                     onChange={handleInputChange}
                   />
                 </div>
+                
+                {/* Business Billing Address */}
+                <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                  <h3 className="font-semibold text-sm">Billing Address</h3>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="streetAddress">Street Address *</Label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="streetAddress"
+                        name="streetAddress"
+                        placeholder="Street address"
+                        value={formData.streetAddress}
+                        onChange={handleInputChange}
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="aptSuite">Apt/Suite/Unit</Label>
+                    <Input
+                      id="aptSuite"
+                      name="aptSuite"
+                      placeholder="Apt, suite, unit, etc."
+                      value={formData.aptSuite}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="city">City *</Label>
+                      <Input
+                        id="city"
+                        name="city"
+                        placeholder="City"
+                        value={formData.city}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="state">State *</Label>
+                      <Input
+                        id="state"
+                        name="state"
+                        placeholder="State"
+                        value={formData.state}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="zipCode">ZIP Code *</Label>
+                    <Input
+                      id="zipCode"
+                      name="zipCode"
+                      placeholder="ZIP code"
+                      value={formData.zipCode}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="businessAddress">Business Address</Label>
                   <div className="relative">

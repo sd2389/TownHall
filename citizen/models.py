@@ -8,6 +8,7 @@ class CitizenProfile(models.Model):
     citizen_id = models.CharField(max_length=20, unique=True)
     phone_number = models.CharField(max_length=15, blank=True)
     address = models.TextField(blank=True)
+    billing_address = models.JSONField(default=dict, blank=True, help_text="Structured billing address")
     date_of_birth = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

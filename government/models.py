@@ -10,6 +10,7 @@ class GovernmentOfficial(models.Model):
     position = models.CharField(max_length=100)
     phone_number = models.CharField(max_length=15, blank=True)
     office_address = models.TextField()
+    town = models.ForeignKey('towns.Town', on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
