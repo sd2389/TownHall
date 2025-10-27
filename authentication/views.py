@@ -32,20 +32,26 @@ def login_view(request):
             'error': 'Invalid credentials'
         }, status=status.HTTP_401_UNAUTHORIZED)
     
-    # Check if user has the correct role
+    # Check if user has a profile
     try:
         profile = UserProfile.objects.get(user=user)
-        if profile.role != user_type:
-            return Response({
-                'error': f'User is not a {user_type}'
-            }, status=status.HTTP_403_FORBIDDEN)
     except UserProfile.DoesNotExist:
         return Response({
-            'error': 'User profile not found'
+            'error': 'User profile not found. Please complete your registration.'
         }, status=status.HTTP_404_NOT_FOUND)
+    
+    # Check role match (bypass for superusers)
+    is_superuser = user.is_superuser
+    if not is_superuser and profile.role != user_type:
+        return Response({
+            'error': f'Invalid account type. Your account is registered as {profile.get_role_display()}, not {user_type}.'
+        }, status=status.HTTP_403_FORBIDDEN)
     
     # Create or get token
     token, created = Token.objects.get_or_create(user=user)
+    
+    # For superusers, use the requested portal role instead of their profile role
+    effective_role = user_type if is_superuser else profile.role
     
     return Response({
         'token': token.key,
@@ -54,8 +60,9 @@ def login_view(request):
             'email': user.email,
             'firstName': user.first_name,
             'lastName': user.last_name,
-            'role': profile.role,
-            'phoneNumber': profile.phone_number,
+            'role': effective_role,
+            'phoneNumber': profile.phone_number or '',
+            'is_superuser': is_superuser,
         },
         'message': 'Login successful'
     }, status=status.HTTP_200_OK)
@@ -223,6 +230,7 @@ def user_profile_view(request):
                 'lastName': request.user.last_name,
                 'role': profile.role,
                 'phoneNumber': profile.phone_number,
+                'is_superuser': request.user.is_superuser,  # Include superuser status
                 **role_data
             }
         }, status=status.HTTP_200_OK)

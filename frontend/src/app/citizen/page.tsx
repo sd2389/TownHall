@@ -43,7 +43,8 @@ import {
   ThumbsUp as ThumbsUpIcon,
   ThumbsDown,
   User,
-  Building2
+  Building2,
+  Zap
 } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
@@ -325,24 +326,52 @@ export default function CitizenPortal() {
   return (
     <ProtectedRoute allowedRoles={['citizen']}>
       <Layout userType="citizen" userName="Maria Lopez" userEmail="maria.lopez@email.com" showPortalNav={true}>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-50 dark:from-gray-900 dark:via-blue-950/20 dark:to-gray-900">
 
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10">
+
+          {/* Welcome Banner */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="mb-8"
+          >
+            <div className="bg-gradient-to-r from-[#003153] to-[#003153]/90 rounded-2xl p-6 sm:p-8 shadow-lg">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+                    Welcome back, Maria! 👋
+                  </h1>
+                  <p className="text-blue-100 text-sm sm:text-base">
+                    Track your complaints, participate in proposals, and stay engaged with your community
+                  </p>
+                </div>
+                <Button 
+                  size="lg" 
+                  className="bg-white text-[#003153] hover:bg-blue-50 font-semibold shadow-md"
+                  onClick={() => alert('Redirecting to File New Complaint...')}
+                >
+                  <Plus className="h-5 w-5 mr-2" />
+                  File New Complaint
+                </Button>
+              </div>
+            </div>
+          </motion.div>
 
           {/* Stats Overview */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="relative"
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="mb-8"
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-[#003153]/5 via-transparent to-[#003153]/5 rounded-2xl"></div>
-            <div className="relative grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8 p-4 sm:p-6 lg:p-8">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             {[
-              { title: "Total Complaints", value: "12", icon: FileText, color: "bg-[#003153]", change: "+2 this week" },
-              { title: "Resolved", value: "8", icon: CheckCircle, color: "bg-[#003153]", change: "67% success rate" },
-              { title: "In Progress", value: "3", icon: Clock, color: "bg-[#003153]", change: "Avg 3 days" },
-              { title: "Community Score", value: "4.8", icon: Star, color: "bg-[#003153]", change: "Excellent" }
+              { title: "Total Complaints", value: "12", icon: FileText, color: "from-blue-500 to-blue-600", bgGradient: "from-blue-50 to-blue-100/50", change: "+2 this week", trend: "up", subtitle: "Active issues" },
+              { title: "Resolved", value: "8", icon: CheckCircle, color: "from-green-500 to-green-600", bgGradient: "from-green-50 to-green-100/50", change: "67% success rate", trend: "neutral", subtitle: "Completed" },
+              { title: "In Progress", value: "3", icon: Clock, color: "from-amber-500 to-amber-600", bgGradient: "from-amber-50 to-amber-100/50", change: "Avg 3 days", trend: "neutral", subtitle: "Pending" },
+              { title: "Community Score", value: "4.8", icon: Star, color: "from-purple-500 to-purple-600", bgGradient: "from-purple-50 to-purple-100/50", change: "Excellent", trend: "neutral", subtitle: "Rating" }
             ].map((stat, index) => {
               const Icon = stat.icon;
               return (
@@ -350,22 +379,44 @@ export default function CitizenPortal() {
                   key={stat.title}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.4 + index * 0.1 }}
-                  whileHover={{ y: -5 }}
+                  transition={{ duration: 0.6, delay: 0.3 + index * 0.1 }}
+                  whileHover={{ y: -8, scale: 1.02 }}
                 >
-                  <Card className="h-full hover:shadow-xl transition-all duration-300 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-[#003153]/30 hover:scale-105">
-                    <CardContent className="p-4 sm:p-5 lg:p-6 h-full flex flex-col">
+                  <Card className="h-full shadow-lg hover:shadow-2xl transition-all duration-300 border-0 bg-gradient-to-br to-white from-gray-50 dark:from-gray-800 dark:to-gray-700 cursor-pointer group overflow-hidden relative" style={{ boxShadow: '0 10px 40px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(0, 0, 0, 0.08)' }}>
+                    {/* Background gradient effect */}
+                    <div className={`absolute inset-0 bg-gradient-to-br ${stat.bgGradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}></div>
+                    
+                    {/* Decorative corner element */}
+                    <div className="absolute top-0 right-0 w-32 h-32">
+                      <div className={`absolute top-0 right-0 w-full h-full bg-gradient-to-br ${stat.color} opacity-5 rounded-full blur-3xl group-hover:blur-2xl group-hover:scale-150 transition-all duration-500`}></div>
+                    </div>
+                    
+                    <CardContent className="p-6 h-full flex flex-col relative z-10">
                       <div className="flex items-start justify-between mb-4">
-                        <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 ${stat.color} rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                          <Icon className="h-5 w-5 sm:h-6 sm:w-6 lg:h-7 lg:w-7 text-white" />
+                        <div className={`w-14 h-14 bg-gradient-to-br ${stat.color} rounded-2xl flex items-center justify-center shadow-lg hover:shadow-xl group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 relative`} style={{ boxShadow: '0 4px 14px 0 rgba(0, 0, 0, 0.1)' }}>
+                          <Icon className="h-7 w-7 text-white relative z-10" />
                         </div>
-                        <span className="text-xs font-semibold text-[#003153] hidden sm:block bg-[#003153]/10 px-2.5 py-1 rounded-full border border-[#003153]/20">{stat.change}</span>
+                        {stat.trend === 'up' && (
+                          <div className="flex items-center gap-1 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full">
+                            <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
+                          </div>
+                        )}
                       </div>
-                      <div className="space-y-2 flex-1 flex flex-col">
-                        <p className="text-xs sm:text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide leading-tight">{stat.title}</p>
-                        <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white leading-none">{stat.value}</p>
-                        <div className="mt-auto">
-                          <span className="text-xs font-semibold text-[#003153] sm:hidden block bg-[#003153]/10 px-2.5 py-1 rounded-full border border-[#003153]/20 inline-block">{stat.change}</span>
+                      
+                      <div className="space-y-3 flex-1 flex flex-col">
+                        <div>
+                          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">{stat.title}</p>
+                          <p className="text-sm text-gray-400 dark:text-gray-500">{stat.subtitle}</p>
+                        </div>
+                        
+                        <div className="flex items-baseline gap-2">
+                          <p className="text-4xl sm:text-5xl font-bold bg-gradient-to-br from-gray-900 to-gray-700 dark:from-white dark:to-gray-200 bg-clip-text text-transparent">{stat.value}</p>
+                        </div>
+                        
+                        <div className="pt-2 border-t border-gray-100 dark:border-gray-600">
+                          <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
+                            {stat.change}
+                          </p>
                         </div>
                       </div>
                     </CardContent>
@@ -381,73 +432,71 @@ export default function CitizenPortal() {
             <div className="lg:col-span-1 lg:col-start-3 lg:row-start-1 space-y-8 sm:space-y-10">
               {/* Recent Complaints */}
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6, delay: 0.5 }}
               >
-                <Card className="border-0 bg-white dark:bg-gray-800 shadow-lg">
-                  <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-3 gap-3">
-                    <div>
-                      <CardTitle className="text-lg sm:text-xl text-gray-900 dark:text-white">Recent Complaints</CardTitle>
-                      <CardDescription className="text-gray-600 dark:text-gray-300">Track your submitted issues</CardDescription>
-                    </div>
-                    <div className="flex gap-2 w-full sm:w-auto">
-                      <Button size="sm" variant="outline" className="text-gray-600 dark:text-gray-300 flex-1 sm:flex-none">
-                        <Filter className="h-4 w-4 mr-2" />
-                        Filter
-                      </Button>
-                      <Button size="sm" className="bg-[#003153] hover:bg-[#003153]/90 flex-1 sm:flex-none">
+                <Card className="border-0 bg-white dark:bg-gray-800 shadow-xl hover:shadow-2xl transition-shadow duration-300">
+                  <CardHeader className="bg-gradient-to-r from-[#003153]/5 to-transparent border-b border-gray-200 dark:border-gray-700 pb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-[#003153] rounded-full animate-pulse"></div>
+                        <CardTitle className="text-xl font-bold text-gray-900 dark:text-white">Recent Complaints</CardTitle>
+                      </div>
+                      <Button size="sm" className="bg-[#003153] hover:bg-[#003153]/90 shadow-md">
                         <Plus className="h-4 w-4 mr-2" />
                         New
                       </Button>
                     </div>
+                    <CardDescription className="text-sm text-gray-600 dark:text-gray-300">Track and manage your submitted issues</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-5">
+                  <CardContent className="p-4 sm:p-6 space-y-3">
                     {complaints.map((complaint) => (
                       <Dialog key={complaint.id}>
                         <DialogTrigger asChild>
                           <motion.div
-                            whileHover={{ scale: 1.02 }}
-                            className="p-5 sm:p-6 border border-gray-200 dark:border-gray-700 rounded-xl hover:shadow-lg transition-all duration-300 bg-white dark:bg-gray-800 hover:border-[#003153]/30 cursor-pointer"
+                            whileHover={{ scale: 1.01, y: -2 }}
+                            className="p-5 border-l-4 border-[#003153] bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-700 rounded-lg hover:shadow-md transition-all duration-300 cursor-pointer group"
                             onClick={() => setSelectedComplaint(complaint)}
                           >
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white mb-2 truncate">{complaint.title}</h3>
-                            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mb-3 line-clamp-2 leading-relaxed">{complaint.description}</p>
-                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs text-gray-500 dark:text-gray-400 mb-3">
-                              <span className="flex items-center">
-                                <MapPin className="h-3 w-3 mr-1 flex-shrink-0" />
-                                <span className="truncate">{complaint.location}</span>
-                              </span>
-                              <span className="flex items-center">
-                                <Clock className="h-3 w-3 mr-1 flex-shrink-0" />
-                                {complaint.created}
-                              </span>
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <h3 className="font-bold text-base text-gray-900 dark:text-white truncate">{complaint.title}</h3>
+                                  {complaint.priority === 'high' && (
+                                    <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                                  )}
+                                </div>
+                                <p className="text-sm text-gray-600 dark:text-gray-300 mb-3 line-clamp-2 leading-relaxed">{complaint.description}</p>
+                              </div>
                             </div>
-                          </div>
-                          <div className="flex flex-col gap-2 ml-3">
-                            <Badge className={`${getStatusColor(complaint.status)} text-xs text-center px-2 py-1 flex items-center justify-center hover:${getStatusColor(complaint.status).split(' ')[0]} hover:${getStatusColor(complaint.status).split(' ')[1]}`}>
-                              {complaint.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                            </Badge>
-                            <Badge className={`${getPriorityColor(complaint.priority)} text-xs text-center px-2 py-1 flex items-center justify-center hover:${getPriorityColor(complaint.priority).split(' ')[0]} hover:${getPriorityColor(complaint.priority).split(' ')[1]}`}>
-                              {complaint.priority.charAt(0).toUpperCase() + complaint.priority.slice(1)}
-                            </Badge>
-                          </div>
-                        </div>
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-700 gap-3">
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
-                            Assigned to: <span className="font-medium">{complaint.assignedTo}</span>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0 hover:bg-[#003153]/10 text-gray-600 dark:text-gray-400 hover:text-[#003153]">
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0 hover:bg-[#003153]/10 text-gray-600 dark:text-gray-400 hover:text-[#003153]">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
+                            
+                            <div className="flex items-center justify-between mb-3">
+                              <Badge className={`${getStatusColor(complaint.status)} text-xs font-semibold px-3 py-1`}>
+                                {complaint.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                              </Badge>
+                              <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                                <span className="flex items-center">
+                                  <MapPin className="h-3 w-3 mr-1" />
+                                  <span className="truncate max-w-[100px]">{complaint.location}</span>
+                                </span>
+                                <span className="flex items-center">
+                                  <Clock className="h-3 w-3 mr-1" />
+                                  {complaint.created}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="pt-3 border-t border-gray-200 dark:border-gray-600">
+                              <div className="flex items-center justify-between">
+                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                  <span className="font-medium">{complaint.assignedTo}</span>
+                                </div>
+                                <Button size="sm" variant="ghost" className="h-7 text-xs hover:bg-[#003153]/10 hover:text-[#003153] opacity-0 group-hover:opacity-100 transition-opacity">
+                                  View Details →
+                                </Button>
+                              </div>
+                            </div>
                           </motion.div>
                         </DialogTrigger>
                         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -531,45 +580,49 @@ export default function CitizenPortal() {
                 </Card>
               </motion.div>
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.7 }}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.6 }}
               >
-                <Card className="border-0 bg-white dark:bg-gray-800 shadow-lg">
-                  <CardHeader className="pb-3 sm:pb-4">
-                    <CardTitle className="text-base sm:text-lg text-gray-900 dark:text-white">Quick Actions</CardTitle>
+                <Card className="border-0 bg-gradient-to-br from-[#003153] to-[#003153]/90 shadow-xl text-white overflow-hidden">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Zap className="h-5 w-5" />
+                      <CardTitle className="text-xl font-bold">Quick Actions</CardTitle>
+                    </div>
+                    <CardDescription className="text-blue-100">Get things done faster</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-2">
+                  <CardContent className="space-y-3">
                     <Button 
-                      className="w-full justify-start bg-[#003153] hover:bg-[#003153]/90 text-sm" 
+                      className="w-full justify-start bg-white text-[#003153] hover:bg-blue-50 font-medium shadow-md" 
                       variant="default"
                       onClick={() => alert('Redirecting to File New Complaint form...')}
                     >
-                      <FileText className="h-4 w-4 mr-2 sm:mr-3" />
+                      <FileText className="h-4 w-4 mr-2" />
                       File New Complaint
                     </Button>
                     <Button 
-                      className="w-full justify-start text-sm hover:bg-[#003153]/10 hover:text-[#003153]" 
+                      className="w-full justify-start bg-white/10 hover:bg-white/20 text-white border border-white/20" 
                       variant="outline"
                       onClick={() => alert('Redirecting to Feedback form...')}
                     >
-                      <MessageSquare className="h-4 w-4 mr-2 sm:mr-3" />
+                      <MessageSquare className="h-4 w-4 mr-2" />
                       Provide Feedback
                     </Button>
                     <Button 
-                      className="w-full justify-start text-sm hover:bg-[#003153]/10 hover:text-[#003153]" 
+                      className="w-full justify-start bg-white/10 hover:bg-white/20 text-white border border-white/20" 
                       variant="outline"
                       onClick={() => alert('Opening Notification Settings...')}
                     >
-                      <Bell className="h-4 w-4 mr-2 sm:mr-3" />
+                      <Bell className="h-4 w-4 mr-2" />
                       Notification Settings
                     </Button>
                     <Button 
-                      className="w-full justify-start text-sm hover:bg-[#003153]/10 hover:text-[#003153]" 
+                      className="w-full justify-start bg-white/10 hover:bg-white/20 text-white border border-white/20" 
                       variant="outline"
                       onClick={() => alert('Downloading Reports...')}
                     >
-                      <Download className="h-4 w-4 mr-2 sm:mr-3" />
+                      <Download className="h-4 w-4 mr-2" />
                       Download Reports
                     </Button>
                   </CardContent>
@@ -584,19 +637,22 @@ export default function CitizenPortal() {
             {/* Bill Proposals (left and wider on large screens) */}
             <div className="lg:col-span-2 lg:col-start-1 lg:row-start-1">
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.8 }}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.4 }}
               >
-                <Card className="border-0 bg-white dark:bg-gray-800 shadow-lg">
-                  <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 gap-3">
-                    <div>
-                      <CardTitle className="text-lg sm:text-xl text-gray-900 dark:text-white">Bill Proposals</CardTitle>
-                      <CardDescription className="text-gray-600 dark:text-gray-300">Review and comment on government proposals</CardDescription>
-                    </div>
-                    <div className="flex gap-2 w-full sm:w-auto">
+                <Card className="border-0 bg-white dark:bg-gray-800 shadow-xl hover:shadow-2xl transition-shadow duration-300">
+                  <CardHeader className="bg-gradient-to-r from-purple-50 to-transparent border-b border-gray-200 dark:border-gray-700 pb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-3">
+                        <Vote className="h-6 w-6 text-[#003153]" />
+                        <div>
+                          <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">Bill Proposals</CardTitle>
+                          <CardDescription className="text-sm text-gray-600 dark:text-gray-300">Review and participate in government proposals</CardDescription>
+                        </div>
+                      </div>
                       <Select value={filterStatus} onValueChange={(value: 'all' | 'open' | 'closed') => setFilterStatus(value)}>
-                        <SelectTrigger className="w-full sm:w-32">
+                        <SelectTrigger className="w-40 border-2">
                           <SelectValue placeholder="Filter by status" />
                         </SelectTrigger>
                         <SelectContent>
@@ -607,7 +663,7 @@ export default function CitizenPortal() {
                       </Select>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-5">
+                  <CardContent className="p-6 space-y-4">
                     {filteredProposals.length === 0 ? (
                       <div className="text-center py-8">
                         <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -623,60 +679,87 @@ export default function CitizenPortal() {
                       <Dialog key={proposal.id}>
                         <DialogTrigger asChild>
                           <motion.div
-                            whileHover={{ scale: 1.02 }}
-                            className="p-5 border border-gray-200 dark:border-gray-700 rounded-xl hover:shadow-lg transition-all duration-300 bg-white dark:bg-gray-800 hover:border-[#003153]/30 cursor-pointer"
+                            whileHover={{ y: -4 }}
+                            className="p-6 border border-gray-200 dark:border-gray-700 rounded-2xl hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-700 hover:border-[#003153]/40 cursor-pointer group"
                           >
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-base text-gray-900 dark:text-white mb-2">{proposal.title}</h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-300 mb-3 line-clamp-2 leading-relaxed">{proposal.summary}</p>
-                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-gray-500 dark:text-gray-400">
-                              <span className="flex items-center">
-                                <User className="h-4 w-4 mr-2 flex-shrink-0" />
-                                {proposal.proposer}
-                              </span>
-                              <span className="flex items-center">
-                                <Calendar className="h-4 w-4 mr-2 flex-shrink-0" />
-                                {proposal.date}
-                              </span>
+                            {/* Header */}
+                            <div className="flex items-start justify-between mb-4">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <h3 className="font-bold text-lg text-gray-900 dark:text-white">{proposal.title}</h3>
+                                  <Badge className={`px-3 py-1 text-xs font-semibold ${
+                                    proposal.status === 'open' 
+                                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
+                                      : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                                  }`}>
+                                    {proposal.status === 'open' ? '● Open' : 'Closed'}
+                                  </Badge>
+                                </div>
+                                <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 line-clamp-2 leading-relaxed">{proposal.summary}</p>
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
+                                  <span className="flex items-center">
+                                    <User className="h-4 w-4 mr-2 text-[#003153]" />
+                                    {proposal.proposer}
+                                  </span>
+                                  <span className="flex items-center">
+                                    <Calendar className="h-4 w-4 mr-2 text-[#003153]" />
+                                    {proposal.date}
+                                  </span>
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                          <div className="flex flex-col gap-2 ml-4">
-                            <Badge className="bg-[#003153]/10 text-[#003153] text-sm text-center px-3 py-1.5 flex items-center justify-center font-medium">
-                              {proposal.status === 'open' ? 'Open' : 'Closed'}
-                            </Badge>
-                          </div>
-                        </div>
 
-                        {/* Voting Section */}
-                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                            <div className="flex items-center gap-3">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className={`h-8 px-3 text-sm font-medium ${userVotes[proposal.id] === 'support' ? 'bg-[#003153] hover:bg-[#003153]/90 text-white border-[#003153]' : 'hover:bg-[#003153]/10 hover:text-[#003153] border-[#003153]/20 text-gray-700'}`}
-                                onClick={() => handleVote(proposal.id, 'support')}
-                              >
-                                <ThumbsUpIcon className="h-3 w-3 mr-1" />
-                                Support ({proposal.supportCount})
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className={`h-8 px-3 text-sm font-medium ${userVotes[proposal.id] === 'oppose' ? 'bg-red-600 hover:bg-red-700 text-white border-red-600' : 'hover:bg-red-50 hover:text-red-600 border-red-200 text-gray-700'}`}
-                                onClick={() => handleVote(proposal.id, 'oppose')}
-                              >
-                                <ThumbsDown className="h-3 w-3 mr-1" />
-                                Oppose ({proposal.opposeCount})
-                              </Button>
+                            {/* Voting Section */}
+                            <div className="mt-5 pt-5 border-t-2 border-gray-100 dark:border-gray-600">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    size="sm"
+                                    className={`h-9 px-4 text-sm font-semibold shadow-sm transition-all ${
+                                      userVotes[proposal.id] === 'support' 
+                                        ? 'bg-[#003153] hover:bg-[#003153]/90 text-white' 
+                                        : 'bg-green-50 hover:bg-green-100 text-green-700 border-green-200'
+                                    }`}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      handleVote(proposal.id, 'support');
+                                    }}
+                                  >
+                                    <ThumbsUpIcon className="h-4 w-4 mr-1" />
+                                    Support <span className="ml-1 font-bold">{proposal.supportCount}</span>
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    className={`h-9 px-4 text-sm font-semibold shadow-sm transition-all ${
+                                      userVotes[proposal.id] === 'oppose' 
+                                        ? 'bg-red-600 hover:bg-red-700 text-white' 
+                                        : 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200'
+                                    }`}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      handleVote(proposal.id, 'oppose');
+                                    }}
+                                  >
+                                    <ThumbsDown className="h-4 w-4 mr-1" />
+                                    Oppose <span className="ml-1 font-bold">{proposal.opposeCount}</span>
+                                  </Button>
+                                </div>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  className="h-9 px-4 text-sm font-medium hover:bg-[#003153]/10 hover:text-[#003153] border-2 group-hover:border-[#003153]/30"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                  }}
+                                >
+                                  <MessageCircle className="h-4 w-4 mr-1" />
+                                  {proposal.comments.length} Comments
+                                </Button>
+                              </div>
                             </div>
-                            <Button size="sm" variant="outline" className="h-8 px-3 text-sm font-medium hover:bg-[#003153]/10 hover:text-[#003153] border-[#003153]/20 text-gray-700">
-                              <MessageCircle className="h-3 w-3 mr-1" />
-                              Comments ({proposal.comments.length})
-                            </Button>
-                          </div>
-                        </div>
                           </motion.div>
                         </DialogTrigger>
                         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
@@ -794,37 +877,49 @@ export default function CitizenPortal() {
                 </Card>
               </motion.div>
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.9 }}
-                className="mt-6 lg:mt-8"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.7 }}
+                className="mt-8"
               >
-                <Card className="border-0 bg-white dark:bg-gray-800 shadow-lg">
-                  <CardHeader className="pb-4 sm:pb-5">
-                    <CardTitle className="text-base sm:text-lg text-gray-900 dark:text-white">Announcements</CardTitle>
-                    <CardDescription className="text-gray-600 dark:text-gray-300 text-sm">Stay updated with community news</CardDescription>
+                <Card className="border-0 bg-white dark:bg-gray-800 shadow-xl hover:shadow-2xl transition-shadow duration-300">
+                  <CardHeader className="bg-gradient-to-r from-amber-50 to-transparent border-b border-gray-200 dark:border-gray-700 pb-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Bell className="h-5 w-5 text-[#003153]" />
+                      <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">Community Announcements</CardTitle>
+                    </div>
+                    <CardDescription className="text-sm text-gray-600 dark:text-gray-300">Stay updated with latest community news and events</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-5">
+                  <CardContent className="p-6 space-y-4">
                     {announcements.map((announcement) => (
                       <Dialog key={announcement.id}>
                         <DialogTrigger asChild>
                           <motion.div
-                            whileHover={{ scale: 1.02 }}
-                            className="p-4 sm:p-5 border border-gray-200 dark:border-gray-700 rounded-xl hover:shadow-md transition-all duration-300 bg-gray-50 dark:bg-gray-700/50 cursor-pointer"
+                            whileHover={{ y: -2 }}
+                            className="p-5 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:shadow-lg transition-all duration-300 bg-white dark:bg-gray-800 cursor-pointer group hover:border-[#003153]/40"
                           >
                             <div className="flex items-start justify-between mb-3">
-                              <h4 className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white leading-tight">{announcement.title}</h4>
-                              <Badge className={`${getPriorityColor(announcement.priority)} text-xs ml-3 px-2 py-1 flex items-center justify-center`}>
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-md">
+                                  <Bell className="h-5 w-5 text-white" />
+                                </div>
+                                <h4 className="font-bold text-base text-gray-900 dark:text-white leading-tight">{announcement.title}</h4>
+                              </div>
+                              <Badge className={`${
+                                announcement.type === 'Event' ? 'bg-purple-100 text-purple-700' :
+                                announcement.type === 'Alert' ? 'bg-red-100 text-red-700' :
+                                'bg-blue-100 text-blue-700'
+                              } text-xs font-semibold px-3 py-1`}>
                                 {announcement.type}
                               </Badge>
                             </div>
-                            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mb-4 line-clamp-2 leading-relaxed">{announcement.description}</p>
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-gray-500 dark:text-gray-400 pt-2">
-                              <span className="flex items-center">
-                                <Calendar className="h-3 w-3 mr-1 flex-shrink-0" />
+                            <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 line-clamp-2 leading-relaxed">{announcement.description}</p>
+                            <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-600">
+                              <span className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                                <Calendar className="h-4 w-4 mr-2 text-[#003153]" />
                                 {announcement.date}
                               </span>
-                              <Button size="sm" variant="ghost" className="h-6 px-2 text-xs self-start sm:self-auto hover:bg-[#003153]/10 hover:text-[#003153]">
+                              <Button size="sm" variant="ghost" className="text-xs hover:bg-[#003153]/10 hover:text-[#003153] opacity-0 group-hover:opacity-100 transition-all">
                                 Read More
                                 <ArrowRight className="h-3 w-3 ml-1" />
                               </Button>

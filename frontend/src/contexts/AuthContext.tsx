@@ -7,8 +7,9 @@ interface User {
   email: string;
   firstName: string;
   lastName: string;
-  role: 'citizen' | 'business' | 'government';
+  role: 'citizen' | 'business' | 'government' | 'superuser';
   phoneNumber: string;
+  is_superuser?: boolean;
   [key: string]: any; // For role-specific data
 }
 
@@ -132,16 +133,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = async () => {
+  const logout = () => {
     try {
       if (token) {
-        await fetch(`${API_BASE_URL}/auth/logout/`, {
+        fetch(`${API_BASE_URL}/auth/logout/`, {
           method: 'POST',
           headers: {
             'Authorization': `Token ${token}`,
             'Content-Type': 'application/json',
           },
-        });
+        }).catch(error => console.error('Logout error:', error));
       }
     } catch (error) {
       console.error('Logout error:', error);

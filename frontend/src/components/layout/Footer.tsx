@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Building2, Mail, Phone, MapPin } from "lucide-react";
+import Link from "next/link";
 
 export default function Footer() {
   return (
@@ -29,27 +30,22 @@ export default function Footer() {
 
           {/* Quick Links */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold">Quick Links</h3>
+            <h3 className="text-sm font-semibold">Portals</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <a href="#" className="hover:text-foreground transition-colors">
-                  Dashboard
-                </a>
+                <Link href="/for-citizens" className="hover:text-foreground transition-colors">
+                  Citizen Portal
+                </Link>
               </li>
               <li>
-                <a href="#" className="hover:text-foreground transition-colors">
-                  File Complaint
-                </a>
+                <Link href="/for-businesses" className="hover:text-foreground transition-colors">
+                  Business Portal
+                </Link>
               </li>
               <li>
-                <a href="#" className="hover:text-foreground transition-colors">
-                  Government Services
-                </a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-foreground transition-colors">
-                  Business Permits
-                </a>
+                <Link href="/for-government" className="hover:text-foreground transition-colors">
+                  Government Portal
+                </Link>
               </li>
             </ul>
           </div>
@@ -59,24 +55,24 @@ export default function Footer() {
             <h3 className="text-sm font-semibold">Support</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <a href="#" className="hover:text-foreground transition-colors">
+                <Link href="/help" className="hover:text-foreground transition-colors">
                   Help Center
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="hover:text-foreground transition-colors">
+                <Link href="/contact" className="hover:text-foreground transition-colors">
                   Contact Us
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="hover:text-foreground transition-colors">
+                <Link href="/privacy" className="hover:text-foreground transition-colors">
                   Privacy Policy
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="hover:text-foreground transition-colors">
+                <Link href="/terms" className="hover:text-foreground transition-colors">
                   Terms of Service
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
@@ -87,15 +83,26 @@ export default function Footer() {
             <div className="space-y-2 text-sm text-muted-foreground">
               <div className="flex items-center space-x-2">
                 <Mail className="h-4 w-4" />
-                <span>contact@townhall.gov</span>
+                <a href="mailto:contact@townhall.gov" className="hover:text-foreground transition-colors">
+                  contact@townhall.gov
+                </a>
               </div>
               <div className="flex items-center space-x-2">
                 <Phone className="h-4 w-4" />
-                <span>(555) 123-4567</span>
+                <a href="tel:+15551234567" className="hover:text-foreground transition-colors">
+                  (555) 123-4567
+                </a>
               </div>
               <div className="flex items-center space-x-2">
                 <MapPin className="h-4 w-4" />
-                <span>123 Government St, City</span>
+                <a 
+                  href="https://www.google.com/maps/search/?api=1&query=123+Government+St+City" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="hover:text-foreground transition-colors"
+                >
+                  123 Government St, City
+                </a>
               </div>
             </div>
           </div>

@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import QuickAccess from "@/components/navigation/QuickAccess";
+import PortalBenefits from "@/components/landing/PortalBenefits";
 import Link from "next/link";
 
 export default function HomePage() {
@@ -174,6 +175,9 @@ export default function HomePage() {
 
       {/* Portal Selection */}
       <QuickAccess />
+
+      {/* Detailed Portal Benefits */}
+      <PortalBenefits />
 
       {/* Enhanced Features Section */}
       <section className="py-24 px-4 bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">

@@ -85,7 +85,7 @@ export default function Header({ userType, userName, userEmail }: HeaderProps) {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-6">
-          <Link href="/citizen">
+          <Link href="/">
             <Button variant="ghost" className="text-sm font-medium flex items-center gap-2">
               <Home className="h-4 w-4" />
               Home
@@ -151,18 +151,31 @@ export default function Header({ userType, userName, userEmail }: HeaderProps) {
             </>
           ) : (
             <>
-              <Button variant="ghost" className="text-sm font-medium">
-                Dashboard
-              </Button>
-              <Button variant="ghost" className="text-sm font-medium">
-                Complaints
-              </Button>
-              <Button variant="ghost" className="text-sm font-medium">
-                Services
-              </Button>
-              <Button variant="ghost" className="text-sm font-medium">
-                Announcements
-              </Button>
+              <Link href="/for-citizens">
+                <Button variant="ghost" className="text-sm font-medium">
+                  For Citizens
+                </Button>
+              </Link>
+              <Link href="/for-businesses">
+                <Button variant="ghost" className="text-sm font-medium">
+                  For Businesses
+                </Button>
+              </Link>
+              <Link href="/for-government">
+                <Button variant="ghost" className="text-sm font-medium">
+                  For Government
+                </Button>
+              </Link>
+              <Link href="/contact">
+                <Button variant="ghost" className="text-sm font-medium">
+                  Contact
+                </Button>
+              </Link>
+              <Link href="/login">
+                <Button variant="ghost" className="text-sm font-medium">
+                  Login
+                </Button>
+              </Link>
             </>
           )}
         </nav>
@@ -245,7 +258,7 @@ export default function Header({ userType, userName, userEmail }: HeaderProps) {
                 )}
               </div>
             )}
-            <Link href="/citizen">
+            <Link href="/">
               <Button variant="ghost" className="w-full justify-start text-sm flex items-center gap-2">
                 <Home className="h-4 w-4" />
                 Home
@@ -311,18 +324,31 @@ export default function Header({ userType, userName, userEmail }: HeaderProps) {
               </>
             ) : (
               <>
-                <Button variant="ghost" className="w-full justify-start text-sm">
-                  Dashboard
-                </Button>
-                <Button variant="ghost" className="w-full justify-start text-sm">
-                  Complaints
-                </Button>
-                <Button variant="ghost" className="w-full justify-start text-sm">
-                  Services
-                </Button>
-                <Button variant="ghost" className="w-full justify-start text-sm">
-                  Announcements
-                </Button>
+                <Link href="/for-citizens">
+                  <Button variant="ghost" className="w-full justify-start text-sm">
+                    For Citizens
+                  </Button>
+                </Link>
+                <Link href="/for-businesses">
+                  <Button variant="ghost" className="w-full justify-start text-sm">
+                    For Businesses
+                  </Button>
+                </Link>
+                <Link href="/for-government">
+                  <Button variant="ghost" className="w-full justify-start text-sm">
+                    For Government
+                  </Button>
+                </Link>
+                <Link href="/contact">
+                  <Button variant="ghost" className="w-full justify-start text-sm">
+                    Contact
+                  </Button>
+                </Link>
+                <Link href="/login">
+                  <Button variant="ghost" className="w-full justify-start text-sm">
+                    Login
+                  </Button>
+                </Link>
               </>
             )}
           </div>

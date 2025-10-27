@@ -51,12 +51,39 @@ export default function ProfilePage() {
     }
   };
 
+  const getDashboardUrl = () => {
+    switch (user?.role) {
+      case 'government': return '/government';
+      case 'business': return '/business';
+      case 'citizen': return '/citizen';
+      default: return '/';
+    }
+  };
+
   const getDisplayName = () => {
     switch (user?.role) {
       case 'government': return 'Government ID';
       case 'citizen': return 'ID Verification';
       case 'business': return 'Business ID Verification';
       default: return 'ID Documents';
+    }
+  };
+
+  const getRoleBadge = () => {
+    switch (user?.role) {
+      case 'citizen': return 'bg-blue-100 text-blue-700';
+      case 'business': return 'bg-green-100 text-green-700';
+      case 'government': return 'bg-purple-100 text-purple-700';
+      default: return 'bg-gray-100 text-gray-700';
+    }
+  };
+
+  const getRoleName = () => {
+    switch (user?.role) {
+      case 'citizen': return 'Citizen';
+      case 'business': return 'Business Owner';
+      case 'government': return 'Government Official';
+      default: return 'User';
     }
   };
 
@@ -94,7 +121,7 @@ export default function ProfilePage() {
   return (
     <ProtectedRoute allowedRoles={['citizen', 'business', 'government']}>
       <Layout showPortalNav={false}>
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 py-8">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
           <div className="container mx-auto px-4 max-w-4xl">
             {/* Header */}
             <motion.div
@@ -103,14 +130,21 @@ export default function ProfilePage() {
               transition={{ duration: 0.5 }}
               className="mb-8"
             >
-              <Link href="/government" className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors">
-                <ArrowLeft className="h-4 w-4 mr-2" />
+              <Link href={getDashboardUrl()} className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6 transition-colors group">
+                <ArrowLeft className="h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform" />
                 Back to Dashboard
               </Link>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-2">
-                Profile & Settings
-              </h1>
-              <p className="text-gray-600 text-lg">Manage your personal information and account settings</p>
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+                    Profile & Settings
+                  </h1>
+                  <p className="text-gray-600 dark:text-gray-400">Manage your personal information and account settings</p>
+                </div>
+                <div className={`px-4 py-2 rounded-lg font-semibold text-sm border ${getRoleBadge()}`}>
+                  {getRoleName()}
+                </div>
+              </div>
             </motion.div>
 
             {/* Profile Card */}
@@ -119,42 +153,47 @@ export default function ProfilePage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
             >
-              <Card>
-                <CardHeader>
+              <Card className="border-0 shadow-lg">
+                <CardHeader className="border-b pb-6 bg-white dark:bg-gray-800">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="flex items-center">
-                        <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center mr-4">
-                          <span className="text-2xl font-bold text-white">
-                            {user?.firstName?.[0]}{user?.lastName?.[0]}
-                          </span>
-                        </div>
-                        <div>
-                          <h2 className="text-2xl font-semibold text-gray-900">
-                            {user?.firstName && user?.lastName 
-                              ? `${user.firstName} ${user.lastName}` 
-                              : 'User Profile'}
-                          </h2>
-                          <p className="text-gray-600">{user?.email || 'email@example.com'}</p>
-                        </div>
-                      </CardTitle>
+                    <div className="flex items-center gap-5">
+                      <div className="w-20 h-20 bg-gray-900 dark:bg-gray-700 rounded-xl flex items-center justify-center shadow-md border-2 border-gray-200 dark:border-gray-600">
+                        <span className="text-2xl font-bold text-white">
+                          {user?.firstName?.[0]}{user?.lastName?.[0]}
+                        </span>
+                      </div>
+                      <div>
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                          {user?.firstName && user?.lastName 
+                            ? `${user.firstName} ${user.lastName}` 
+                            : 'User Profile'}
+                        </h2>
+                        <p className="text-gray-600 dark:text-gray-400 flex items-center text-sm">
+                          <Mail className="h-4 w-4 mr-2" />
+                          {user?.email || 'email@example.com'}
+                        </p>
+                      </div>
                     </div>
                     {!isEditing && (
-                      <Button onClick={() => setIsEditing(true)} variant="outline">
+                      <Button 
+                        onClick={() => setIsEditing(true)} 
+                        variant="outline"
+                        className="font-semibold border-2 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      >
                         Edit Profile
                       </Button>
                     )}
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-6">
+                  <div className="space-y-6" style={{ paddingTop: '1.5rem' } as React.CSSProperties}>
                     {/* Personal Information */}
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                        <User className="h-5 w-5 mr-2 text-purple-600" />
+                    <div className="p-6 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+                      <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center pb-3 border-b border-gray-200 dark:border-gray-700">
+                        <User className="h-5 w-5 mr-2 text-gray-600 dark:text-gray-400" />
                         Personal Information
                       </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div>
                           <Label htmlFor="firstName">First Name</Label>
                           <Input
@@ -212,37 +251,37 @@ export default function ProfilePage() {
                     </div>
 
                     {/* Address Information */}
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                        <Building2 className="h-5 w-5 mr-2 text-blue-600" />
-                        Address
+                    <div className="p-6 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+                      <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center pb-3 border-b border-gray-200 dark:border-gray-700">
+                        <Building2 className="h-5 w-5 mr-2 text-gray-600 dark:text-gray-400" />
+                        Address Information
                       </h3>
                       <div>
-                        <Label htmlFor="address">Street Address</Label>
+                        <Label htmlFor="address" className="text-sm font-semibold">Street Address</Label>
                         <Input
                           id="address"
                           name="address"
                           value={formData.address}
                           onChange={handleChange}
                           disabled={!isEditing}
-                          className={!isEditing ? "bg-gray-50" : ""}
+                          className={!isEditing ? "bg-gray-50 mt-2" : "mt-2"}
                           placeholder="123 Main Street"
                         />
                       </div>
                     </div>
 
                     {/* ID Verification Section */}
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                        <Shield className="h-5 w-5 mr-2 text-purple-600" />
+                    <div className="p-6 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+                      <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center pb-3 border-b border-gray-200 dark:border-gray-700">
+                        <Shield className="h-5 w-5 mr-2 text-gray-600 dark:text-gray-400" />
                         {getDisplayName()}
                       </h3>
                       
                       {/* ID Type Selection (for Citizens and Business Owners) */}
                       {user?.role !== 'government' && (
-                        <div className="mb-4">
-                          <Label>ID Type</Label>
-                          <div className="grid grid-cols-3 gap-3 mt-2">
+                        <div className="mb-6">
+                          <Label className="text-sm font-semibold block mb-3">Select ID Type</Label>
+                          <div className="grid grid-cols-3 gap-4">
                             {getIDOptions().map((option) => {
                               const Icon = option.icon;
                               return (
@@ -250,17 +289,17 @@ export default function ProfilePage() {
                                   key={option.value}
                                   type="button"
                                   onClick={() => setSelectedIdType(option.value)}
-                                  className={`flex flex-col items-center p-4 border-2 rounded-lg transition-all ${
+                                  className={`flex flex-col items-center p-5 border-2 rounded-lg transition-all duration-300 ${
                                     selectedIdType === option.value
-                                      ? 'border-purple-600 bg-purple-50'
-                                      : 'border-gray-200 hover:border-gray-300'
+                                      ? 'border-gray-900 dark:border-gray-100 bg-gray-50 dark:bg-gray-700 shadow-sm'
+                                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700/50'
                                   }`}
                                 >
-                                  <Icon className={`h-6 w-6 mb-2 ${
-                                    selectedIdType === option.value ? 'text-purple-600' : 'text-gray-400'
+                                  <Icon className={`h-8 w-8 mb-3 ${
+                                    selectedIdType === option.value ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500'
                                   }`} />
-                                  <span className={`text-sm ${
-                                    selectedIdType === option.value ? 'font-medium text-gray-900' : 'text-gray-600'
+                                  <span className={`text-sm font-semibold ${
+                                    selectedIdType === option.value ? 'text-gray-900 dark:text-gray-100' : 'text-gray-600 dark:text-gray-400'
                                   }`}>
                                     {option.label}
                                   </span>
@@ -346,14 +385,18 @@ export default function ProfilePage() {
 
                     {/* Action Buttons */}
                     {isEditing && (
-                      <div className="flex items-center justify-end space-x-3 pt-4 border-t">
+                      <div className="flex items-center justify-end space-x-3 pt-6 border-t border-gray-200 dark:border-gray-700">
                         <Button
                           variant="outline"
                           onClick={() => setIsEditing(false)}
+                          className="font-semibold border-2"
                         >
                           Cancel
                         </Button>
-                        <Button onClick={handleSave} className="bg-purple-600 hover:bg-purple-700">
+                        <Button 
+                          onClick={handleSave} 
+                          className="bg-gray-900 dark:bg-gray-100 hover:bg-gray-800 dark:hover:bg-gray-200 text-white dark:text-gray-900 font-semibold border-2 border-gray-900 dark:border-gray-100"
+                        >
                           <Save className="h-4 w-4 mr-2" />
                           Save Changes
                         </Button>
@@ -371,26 +414,26 @@ export default function ProfilePage() {
               transition={{ duration: 0.5, delay: 0.2 }}
               className="mt-6"
             >
-              <Card>
-                <CardHeader>
-                  <CardTitle>Security & Privacy</CardTitle>
-                  <CardDescription>Manage your account security settings</CardDescription>
+              <Card className="border-0 shadow-lg">
+                <CardHeader className="border-b bg-white dark:bg-gray-800">
+                  <CardTitle className="text-xl font-bold text-gray-900 dark:text-white">Security & Privacy</CardTitle>
+                  <CardDescription className="text-gray-600 dark:text-gray-400">Manage your account security settings</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-6">
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center justify-between p-5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
                       <div>
-                        <h4 className="font-medium text-gray-900">Change Password</h4>
-                        <p className="text-sm text-gray-600">Update your password to keep your account secure</p>
+                        <h4 className="font-semibold text-gray-900 dark:text-white">Change Password</h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Update your password to keep your account secure</p>
                       </div>
-                      <Button variant="outline">Change</Button>
+                      <Button variant="outline" className="border-2">Change</Button>
                     </div>
-                    <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center justify-between p-5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
                       <div>
-                        <h4 className="font-medium text-gray-900">Two-Factor Authentication</h4>
-                        <p className="text-sm text-gray-600">Add an extra layer of security to your account</p>
+                        <h4 className="font-semibold text-gray-900 dark:text-white">Two-Factor Authentication</h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Add an extra layer of security to your account</p>
                       </div>
-                      <Button variant="outline">Enable</Button>
+                      <Button variant="outline" className="border-2">Enable</Button>
                     </div>
                   </div>
                 </CardContent>

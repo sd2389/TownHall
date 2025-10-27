@@ -10,6 +10,12 @@ interface ProtectedRouteProps {
   redirectTo?: string;
 }
 
+interface UserWithSuperuser {
+  role: 'citizen' | 'business' | 'government' | 'superuser';
+  is_superuser?: boolean;
+  [key: string]: any;
+}
+
 export default function ProtectedRoute({ 
   children, 
   allowedRoles = [], 
@@ -25,14 +31,26 @@ export default function ProtectedRoute({
         return;
       }
 
+      // Check if user is a superuser
+      // For superusers, we need to check both the is_superuser flag AND allow them to access any portal
+      // Also check if the user has superuser privileges (is_superuser flag)
+      const isSuperuser = user?.is_superuser === true || user?.role === 'superuser';
+      
+      if (isSuperuser) {
+        // Superusers can access all portals, skip role check
+        return;
+      }
+
+      // If not a superuser and role doesn't match allowed roles, redirect
       if (allowedRoles.length > 0 && user && !allowedRoles.includes(user.role)) {
         // Redirect to appropriate portal based on user role
         const roleRedirects = {
           citizen: '/citizen',
           business: '/business',
-          government: '/government'
+          government: '/government',
+          superuser: '/government' // Superusers default to government portal
         };
-        router.push(roleRedirects[user.role] || '/');
+        router.push(roleRedirects[user.role as keyof typeof roleRedirects] || '/');
         return;
       }
     }
@@ -48,6 +66,11 @@ export default function ProtectedRoute({
 
   if (!isAuthenticated) {
     return null;
+  }
+
+  // Superusers can access all portals
+  if (user?.is_superuser || user?.role === 'superuser') {
+    return <>{children}</>;
   }
 
   if (allowedRoles.length > 0 && user && !allowedRoles.includes(user.role)) {
