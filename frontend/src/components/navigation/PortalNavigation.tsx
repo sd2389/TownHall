@@ -47,9 +47,10 @@ export default function PortalNavigation({ currentUserType, userName }: PortalNa
   const pathname = usePathname();
   const { user, logout } = useAuth();
 
-  // Determine current portal based on pathname or user role
+  // Determine current portal based on pathname first (for superusers), then user role
   const getCurrentPortal = () => {
-    if (pathname.startsWith("/citizen") || user?.role === "citizen") {
+    // For superusers, prioritize pathname to show the correct portal navbar
+    if (pathname.startsWith("/citizen") || (!pathname.startsWith("/business") && !pathname.startsWith("/government") && user?.role === "citizen")) {
       return {
         name: "Citizen Portal",
         icon: Users,
@@ -57,7 +58,7 @@ export default function PortalNavigation({ currentUserType, userName }: PortalNa
         description: "File complaints and provide feedback",
         role: "citizen" as const
       };
-    } else if (pathname.startsWith("/business") || user?.role === "business") {
+    } else if (pathname.startsWith("/business") || (!pathname.startsWith("/citizen") && !pathname.startsWith("/government") && user?.role === "business")) {
       return {
         name: "Business Portal", 
         icon: Building2,
@@ -65,7 +66,7 @@ export default function PortalNavigation({ currentUserType, userName }: PortalNa
         description: "Manage licenses and promote business",
         role: "business" as const
       };
-    } else if (pathname.startsWith("/government") || user?.role === "government") {
+    } else if (pathname.startsWith("/government") || (!pathname.startsWith("/citizen") && !pathname.startsWith("/business") && user?.role === "government")) {
       return {
         name: "Government Portal",
         icon: Shield,
@@ -78,7 +79,8 @@ export default function PortalNavigation({ currentUserType, userName }: PortalNa
   };
 
   const currentPortal = getCurrentPortal();
-  const userRole = user?.role || currentUserType || currentPortal?.role;
+  // For navigation items, use portal role if pathname is specific, otherwise use user role
+  const userRole = currentPortal?.role || user?.role || currentUserType;
 
   // Role-specific navigation items
   const getNavigationItems = () => {

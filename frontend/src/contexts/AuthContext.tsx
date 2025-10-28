@@ -33,11 +33,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for stored token on mount
-    const storedToken = localStorage.getItem('auth_token');
-    if (storedToken) {
-      setToken(storedToken);
-      fetchUserProfile(storedToken);
+    // Check for stored token on mount (client-side only)
+    if (typeof window !== 'undefined') {
+      const storedToken = localStorage.getItem('auth_token');
+      if (storedToken) {
+        setToken(storedToken);
+        fetchUserProfile(storedToken);
+      } else {
+        setIsLoading(false);
+      }
     } else {
       setIsLoading(false);
     }
@@ -45,25 +49,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUserProfile = async (authToken: string) => {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
       const response = await fetch(`${API_BASE_URL}/auth/profile/`, {
         headers: {
           'Authorization': `Token ${authToken}`,
           'Content-Type': 'application/json',
         },
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (response.ok) {
         const data = await response.json();
         setUser(data.user);
-      } else {
+      } else if (response.status === 401 || response.status === 403) {
         // Token is invalid, clear it
         localStorage.removeItem('auth_token');
         setToken(null);
+        setUser(null);
       }
     } catch (error) {
-      console.error('Error fetching user profile:', error);
-      localStorage.removeItem('auth_token');
-      setToken(null);
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.error('Request timeout when fetching user profile');
+      } else {
+        console.error('Error fetching user profile:', error);
+      }
+      // Don't clear token on network errors, only on auth errors
+      // localStorage.removeItem('auth_token');
+      // setToken(null);
     } finally {
       setIsLoading(false);
     }

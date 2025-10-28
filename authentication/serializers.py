@@ -112,3 +112,4 @@ class PendingUserSerializer(serializers.Serializer):
     role = serializers.CharField()
     created_at = serializers.DateTimeField()
 
+

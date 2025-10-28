@@ -137,3 +137,4 @@ class IsApprovedOrReadOnly(permissions.BasePermission):
         except UserProfile.DoesNotExist:
             return False
 
+

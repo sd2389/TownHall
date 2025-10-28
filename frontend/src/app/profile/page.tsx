@@ -7,16 +7,30 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { motion } from "framer-motion";
-import { User, Mail, Phone, Building2, Save, ArrowLeft, Upload, FileText, IdCard, CreditCard, Shield } from "lucide-react";
+import { User, Mail, Phone, Building2, Save, ArrowLeft, Upload, FileText, IdCard, CreditCard, Shield, MapPin } from "lucide-react";
 import Link from "next/link";
+import { useToast } from "@/hooks/use-toast.tsx";
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+
+interface Town {
+  id: number;
+  name: string;
+  state: string;
+}
 
 export default function ProfilePage() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
+  const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [selectedIdType, setSelectedIdType] = useState(user?.role === 'government' ? 'government' : 'drivers_license');
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+  const [towns, setTowns] = useState<Town[]>([]);
+  const [selectedTown, setSelectedTown] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [formData, setFormData] = useState({
     firstName: "",
@@ -26,7 +40,24 @@ export default function ProfilePage() {
     department: "",
     address: "",
     idNumber: "",
+    town: "",
   });
+
+  // Fetch towns list
+  useEffect(() => {
+    const fetchTowns = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/towns/active/`);
+        if (response.ok) {
+          const data = await response.json();
+          setTowns(data);
+        }
+      } catch (error) {
+        console.error('Error fetching towns:', error);
+      }
+    };
+    fetchTowns();
+  }, []);
 
   // Initialize form data when user data is available
   useEffect(() => {
@@ -35,11 +66,13 @@ export default function ProfilePage() {
         firstName: user.firstName || "",
         lastName: user.lastName || "",
         email: user.email || "",
-        phone: "",
+        phone: user.phoneNumber || "",
         department: "",
         address: "",
         idNumber: "",
+        town: "",
       });
+      setSelectedTown(user.town || "");
     }
   }, [user]);
 
@@ -112,15 +145,64 @@ export default function ProfilePage() {
     });
   };
 
-  const handleSave = () => {
+  const handleTownChange = async (newTownId: string) => {
+    if (!token || !user) return;
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/towns/change-request/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Token ${token}`,
+        },
+        body: JSON.stringify({
+          new_town_id: parseInt(newTownId),
+          reason: 'User requested town change from profile'
+        }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Town Change Request Submitted",
+          description: "Your request to change your town has been submitted and is pending approval.",
+        });
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.error || "Failed to submit town change request",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error submitting town change:', error);
+      toast({
+        title: "Error",
+        description: "Failed to submit town change request",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSave = async () => {
+    setIsSubmitting(true);
     // TODO: Implement API call to save profile data
     console.log("Saving profile data:", formData);
+    
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
     setIsEditing(false);
+    setIsSubmitting(false);
+    toast({
+      title: "Profile Updated",
+      description: "Your profile has been updated successfully.",
+    });
   };
 
   return (
     <ProtectedRoute allowedRoles={['citizen', 'business', 'government']}>
-      <Layout showPortalNav={false}>
+      <Layout showPortalNav={true}>
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
           <div className="container mx-auto px-4 max-w-4xl">
             {/* Header */}
@@ -256,17 +338,54 @@ export default function ProfilePage() {
                         <Building2 className="h-5 w-5 mr-2 text-gray-600 dark:text-gray-400" />
                         Address Information
                       </h3>
-                      <div>
-                        <Label htmlFor="address" className="text-sm font-semibold">Street Address</Label>
-                        <Input
-                          id="address"
-                          name="address"
-                          value={formData.address}
-                          onChange={handleChange}
-                          disabled={!isEditing}
-                          className={!isEditing ? "bg-gray-50 mt-2" : "mt-2"}
-                          placeholder="123 Main Street"
-                        />
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="address" className="text-sm font-semibold">Street Address</Label>
+                          <Input
+                            id="address"
+                            name="address"
+                            value={formData.address}
+                            onChange={handleChange}
+                            disabled={!isEditing}
+                            className={!isEditing ? "bg-gray-50 mt-2" : "mt-2"}
+                            placeholder="123 Main Street"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm font-semibold flex items-center gap-2">
+                            <MapPin className="h-4 w-4" />
+                            Current Town
+                          </Label>
+                          <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">
+                              {selectedTown || "No town assigned"}
+                            </p>
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor="town" className="text-sm font-semibold">Change Town</Label>
+                          <Select
+                            value={formData.town}
+                            onValueChange={(value) => {
+                              setFormData({ ...formData, town: value });
+                              handleTownChange(value);
+                            }}
+                          >
+                            <SelectTrigger className="mt-2">
+                              <SelectValue placeholder="Select a new town" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {towns.map((town) => (
+                                <SelectItem key={town.id} value={town.id.toString()}>
+                                  {town.name}, {town.state}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Your request will be reviewed by government officials
+                          </p>
+                        </div>
                       </div>
                     </div>
 
@@ -395,10 +514,11 @@ export default function ProfilePage() {
                         </Button>
                         <Button 
                           onClick={handleSave} 
+                          disabled={isSubmitting}
                           className="bg-gray-900 dark:bg-gray-100 hover:bg-gray-800 dark:hover:bg-gray-200 text-white dark:text-gray-900 font-semibold border-2 border-gray-900 dark:border-gray-100"
                         >
                           <Save className="h-4 w-4 mr-2" />
-                          Save Changes
+                          {isSubmitting ? 'Saving...' : 'Save Changes'}
                         </Button>
                       </div>
                     )}
