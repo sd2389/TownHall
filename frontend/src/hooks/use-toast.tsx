@@ -39,25 +39,27 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <ToastContext.Provider value={{ toast }}>
       {children}
       <div className="fixed bottom-0 right-0 p-4 z-50 space-y-2">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={`rounded-lg p-4 shadow-lg min-w-[300px] max-w-md ${
-              toast.variant === "destructive"
-                ? "bg-red-500 text-white"
-                : "bg-white text-gray-900 border border-gray-200"
-            }`}
-          >
-            {toast.title && (
-              <h4 className="font-semibold mb-1">{toast.title}</h4>
-            )}
-            {toast.description && (
-              <p className="text-sm">{toast.description}</p>
-            )}
-          </div>
-        ))}
+        {toasts.map((toast) => {
+          const baseClasses = "rounded-lg p-4 shadow-lg min-w-[300px] max-w-md";
+          const variantClasses = toast.variant === "destructive"
+            ? "bg-red-500 text-white"
+            : "bg-white text-gray-900 border border-gray-200";
+          
+          return (
+            <div
+              key={toast.id}
+              className={`${baseClasses} ${variantClasses}`}
+            >
+              {toast.title && (
+                <h4 className="font-semibold mb-1">{toast.title}</h4>
+              )}
+              {toast.description && (
+                <p className="text-sm">{toast.description}</p>
+              )}
+            </div>
+          );
+        })}
       </div>
     </ToastContext.Provider>
   );
 }
-

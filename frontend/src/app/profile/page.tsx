@@ -12,7 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { motion } from "framer-motion";
 import { User, Mail, Phone, Building2, Save, ArrowLeft, Upload, FileText, IdCard, CreditCard, Shield, MapPin } from "lucide-react";
 import Link from "next/link";
-import { useToast } from "@/hooks/use-toast.tsx";
+import { useToast } from "@/hooks/use-toast";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
