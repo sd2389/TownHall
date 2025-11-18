@@ -98,7 +98,7 @@ function LoginFormComponent() {
 
   return (
     <Layout>
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 py-12 px-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-8 sm:py-12 px-4 sm:px-6">
         <div className="w-full max-w-md">
           {/* Back to Home */}
           <motion.div
@@ -121,29 +121,32 @@ function LoginFormComponent() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
           >
-            <Card className="shadow-xl">
-              <CardHeader className="text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <LogIn className="h-8 w-8 text-white" />
-                </div>
-                <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
-                <CardDescription>
+            <Card className="shadow-2xl border-0 bg-white/90 dark:bg-gray-800/90 backdrop-blur-lg">
+              <CardHeader className="text-center pb-6 pt-8">
+                <motion.div
+                  whileHover={{ scale: 1.1, rotate: 5 }}
+                  className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-blue-500 via-purple-600 to-cyan-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg"
+                >
+                  <LogIn className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
+                </motion.div>
+                <CardTitle className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Welcome Back</CardTitle>
+                <CardDescription className="text-sm sm:text-base mt-2">
                   Sign in to your TownHall account to continue
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-6 sm:px-8 pb-8">
                 {error && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="mb-4 p-3 bg-red-100 border border-red-300 rounded-lg flex items-center gap-2 text-red-700"
+                    className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-xl flex items-start gap-3 text-red-700 dark:text-red-300 shadow-sm"
                   >
-                    <AlertCircle className="h-4 w-4" />
-                    {error}
+                    <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+                    <p className="text-sm font-medium">{error}</p>
                   </motion.div>
                 )}
                 
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
                   {/* User Type Selection */}
                   <div className="space-y-2">
                     <Label htmlFor="userType">Account Type</Label>
@@ -244,8 +247,13 @@ function LoginFormComponent() {
                   </div>
 
                   {/* Login Button */}
-                  <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
-                    <LogIn className="mr-2 h-4 w-4" />
+                  <Button 
+                    type="submit" 
+                    className="w-full h-12 text-base font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]" 
+                    size="lg" 
+                    disabled={isLoading}
+                  >
+                    <LogIn className="mr-2 h-5 w-5" />
                     {isLoading ? "Signing In..." : "Sign In"}
                   </Button>
 

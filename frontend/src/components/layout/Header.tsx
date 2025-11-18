@@ -69,9 +69,9 @@ export default function Header({ userType, userName, userEmail }: HeaderProps) {
       initial={{ y: -100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.5 }}
-      className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+      className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur-lg supports-[backdrop-filter]:bg-background/60 shadow-sm"
     >
-      <div className="container flex h-14 sm:h-16 items-center justify-between px-3 sm:px-4">
+      <div className="container flex h-14 sm:h-16 md:h-18 items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <motion.div
           whileHover={{ scale: 1.05 }}
@@ -243,10 +243,15 @@ export default function Header({ userType, userName, userEmail }: HeaderProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="md:hidden h-8 w-8 p-0"
+            className="md:hidden h-9 w-9 p-0 rounded-lg hover:bg-accent transition-colors"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label="Toggle menu"
           >
-            {isMobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            {isMobileMenuOpen ? (
+              <X className="h-5 w-5" />
+            ) : (
+              <Menu className="h-5 w-5" />
+            )}
           </Button>
         </div>
       </div>
@@ -257,9 +262,10 @@ export default function Header({ userType, userName, userEmail }: HeaderProps) {
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: "auto" }}
           exit={{ opacity: 0, height: 0 }}
-          className="md:hidden border-t bg-background"
+          transition={{ duration: 0.3 }}
+          className="md:hidden border-t bg-background/95 backdrop-blur-lg supports-[backdrop-filter]:bg-background/60"
         >
-          <div className="container px-3 py-3 space-y-1">
+          <div className="container px-4 py-4 space-y-2 max-h-[calc(100vh-4rem)] overflow-y-auto custom-scrollbar">
             {userType && (
               <div className="px-3 py-2 mb-2">
                 <Badge className={`${getBadgeColor()} text-xs`}>
@@ -270,106 +276,114 @@ export default function Header({ userType, userName, userEmail }: HeaderProps) {
                 )}
               </div>
             )}
-            <Link href="/">
-              <Button variant="ghost" className="w-full justify-start text-sm flex items-center gap-2">
+            <Link href="/" onClick={() => setIsMobileMenuOpen(false)}>
+              <Button variant="ghost" className="w-full justify-start text-sm flex items-center gap-2 h-10 rounded-lg hover:bg-accent transition-colors">
                 <Home className="h-4 w-4" />
                 Home
               </Button>
             </Link>
-            <Link href="/emergency">
-              <Button variant="ghost" className="w-full justify-start text-sm flex items-center gap-2 text-red-600">
+            <Link href="/emergency" onClick={() => setIsMobileMenuOpen(false)}>
+              <Button variant="ghost" className="w-full justify-start text-sm flex items-center gap-2 h-10 rounded-lg hover:bg-red-50 hover:text-red-700 text-red-600 transition-colors">
                 <Phone className="h-4 w-4" />
                 Emergency
               </Button>
             </Link>
             {userType === "citizen" ? (
               <>
-                <Link href="/citizen/complaints"><Button variant="ghost" className="w-full justify-start text-sm">My Complaints</Button></Link>
-                <Link href="/citizen/file-new"><Button variant="ghost" className="w-full justify-start text-sm">File New</Button></Link>
-                <Link href="/citizen/services"><Button variant="ghost" className="w-full justify-start text-sm">Services</Button></Link>
-                <Link href="/citizen/notifications"><Button variant="ghost" className="w-full justify-start text-sm">Notifications</Button></Link>
+                <Link href="/citizen/complaints" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start text-sm h-10 rounded-lg hover:bg-accent transition-colors">My Complaints</Button>
+                </Link>
+                <Link href="/citizen/file-new" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start text-sm h-10 rounded-lg hover:bg-accent transition-colors">File New</Button>
+                </Link>
+                <Link href="/citizen/services" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start text-sm h-10 rounded-lg hover:bg-accent transition-colors">Services</Button>
+                </Link>
+                <Link href="/citizen/notifications" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start text-sm h-10 rounded-lg hover:bg-accent transition-colors">Notifications</Button>
+                </Link>
               </>
             ) : userType === "business" ? (
               <>
-                <Link href="/business">
-                  <Button variant="ghost" className="w-full justify-start text-sm">
+                <Link href="/business" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start text-sm h-10 rounded-lg hover:bg-accent transition-colors">
                     Dashboard
                   </Button>
                 </Link>
-                <Link href="/business/licenses">
-                  <Button variant="ghost" className="w-full justify-start text-sm">
+                <Link href="/business/licenses" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start text-sm h-10 rounded-lg hover:bg-accent transition-colors">
                     Licenses
                   </Button>
                 </Link>
-                <Link href="/business/permits">
-                  <Button variant="ghost" className="w-full justify-start text-sm">
+                <Link href="/business/permits" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start text-sm h-10 rounded-lg hover:bg-accent transition-colors">
                     Permits
                   </Button>
                 </Link>
-                <Link href="/business/events">
-                  <Button variant="ghost" className="w-full justify-start text-sm">
+                <Link href="/business/events" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start text-sm h-10 rounded-lg hover:bg-accent transition-colors">
                     Events
                   </Button>
                 </Link>
-                <Link href="/business/applications">
-                  <Button variant="ghost" className="w-full justify-start text-sm">
+                <Link href="/business/applications" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start text-sm h-10 rounded-lg hover:bg-accent transition-colors">
                     Applications
                   </Button>
                 </Link>
               </>
             ) : userType === "government" ? (
               <>
-                <Link href="/government">
-                  <Button variant="ghost" className="w-full justify-start text-sm">
+                <Link href="/government" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start text-sm h-10 rounded-lg hover:bg-accent transition-colors">
                     Dashboard
                   </Button>
                 </Link>
-                <Link href="/admin">
-                  <Button variant="ghost" className="w-full justify-start text-sm bg-purple-100">
+                <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start text-sm h-10 rounded-lg bg-purple-100 hover:bg-purple-200 transition-colors">
                     <Shield className="h-4 w-4 mr-2" />
                     Admin Panel
                   </Button>
                 </Link>
-                <Link href="/government/complaints">
-                  <Button variant="ghost" className="w-full justify-start text-sm">
+                <Link href="/government/complaints" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start text-sm h-10 rounded-lg hover:bg-accent transition-colors">
                     Complaints
                   </Button>
                 </Link>
-                <Link href="/government/announcements">
-                  <Button variant="ghost" className="w-full justify-start text-sm">
+                <Link href="/government/announcements" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start text-sm h-10 rounded-lg hover:bg-accent transition-colors">
                     Announcements
                   </Button>
                 </Link>
-                <Link href="/government/reports">
-                  <Button variant="ghost" className="w-full justify-start text-sm">
+                <Link href="/government/reports" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start text-sm h-10 rounded-lg hover:bg-accent transition-colors">
                     Reports
                   </Button>
                 </Link>
               </>
             ) : (
               <>
-                <Link href="/for-citizens">
-                  <Button variant="ghost" className="w-full justify-start text-sm">
+                <Link href="/for-citizens" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start text-sm h-10 rounded-lg hover:bg-accent transition-colors">
                     For Citizens
                   </Button>
                 </Link>
-                <Link href="/for-businesses">
-                  <Button variant="ghost" className="w-full justify-start text-sm">
+                <Link href="/for-businesses" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start text-sm h-10 rounded-lg hover:bg-accent transition-colors">
                     For Businesses
                   </Button>
                 </Link>
-                <Link href="/for-government">
-                  <Button variant="ghost" className="w-full justify-start text-sm">
+                <Link href="/for-government" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start text-sm h-10 rounded-lg hover:bg-accent transition-colors">
                     For Government
                   </Button>
                 </Link>
-                <Link href="/contact">
-                  <Button variant="ghost" className="w-full justify-start text-sm">
+                <Link href="/contact" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start text-sm h-10 rounded-lg hover:bg-accent transition-colors">
                     Contact
                   </Button>
                 </Link>
-                <Link href="/login">
-                  <Button variant="ghost" className="w-full justify-start text-sm">
+                <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start text-sm h-10 rounded-lg hover:bg-accent transition-colors">
                     Login
                   </Button>
                 </Link>

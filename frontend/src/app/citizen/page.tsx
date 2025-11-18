@@ -330,7 +330,7 @@ export default function CitizenPortal() {
       <Layout userType="citizen" userName={`${user?.firstName || ''} ${user?.lastName || ''}`} userEmail={user?.email || ''} showPortalNav={true}>
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-50 dark:from-gray-900 dark:via-blue-950/20 dark:to-gray-900">
 
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 md:py-8 lg:py-10">
 
           {/* Welcome Banner */}
           <motion.div
@@ -339,23 +339,23 @@ export default function CitizenPortal() {
             transition={{ duration: 0.6, delay: 0.1 }}
             className="mb-8"
           >
-            <div className="bg-gradient-to-r from-[#003153] to-[#003153]/90 rounded-2xl p-6 sm:p-8 shadow-lg">
+            <div className="bg-gradient-to-r from-[#003153] to-[#003153]/90 rounded-xl sm:rounded-2xl p-5 sm:p-6 md:p-8 shadow-xl">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                  <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2 leading-tight">
                     Welcome back, {user?.firstName}! 👋
                   </h1>
-                  <p className="text-blue-100 text-sm sm:text-base">
+                  <p className="text-blue-100 text-xs sm:text-sm md:text-base leading-relaxed">
                     Track your complaints, participate in proposals, and stay engaged with your community
                   </p>
                 </div>
                 <Button 
                   size="lg" 
-                  className="bg-white text-[#003153] hover:bg-blue-50 font-semibold shadow-md"
+                  className="w-full sm:w-auto bg-white text-[#003153] hover:bg-blue-50 font-semibold shadow-md transition-all duration-300 transform hover:scale-105"
                   onClick={() => alert('Redirecting to File New Complaint...')}
                 >
-                  <Plus className="h-5 w-5 mr-2" />
-                  File New Complaint
+                  <Plus className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
+                  <span className="text-sm sm:text-base">File New Complaint</span>
                 </Button>
               </div>
             </div>
@@ -368,7 +368,7 @@ export default function CitizenPortal() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="mb-8"
           >
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
             {[
               { title: "Total Complaints", value: "12", icon: FileText, color: "from-blue-500 to-blue-600", bgGradient: "from-blue-50 to-blue-100/50", change: "+2 this week", trend: "up", subtitle: "Active issues" },
               { title: "Resolved", value: "8", icon: CheckCircle, color: "from-green-500 to-green-600", bgGradient: "from-green-50 to-green-100/50", change: "67% success rate", trend: "neutral", subtitle: "Completed" },
@@ -393,10 +393,10 @@ export default function CitizenPortal() {
                       <div className={`absolute top-0 right-0 w-full h-full bg-gradient-to-br ${stat.color} opacity-5 rounded-full blur-3xl group-hover:blur-2xl group-hover:scale-150 transition-all duration-500`}></div>
                     </div>
                     
-                    <CardContent className="p-6 h-full flex flex-col relative z-10">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className={`w-14 h-14 bg-gradient-to-br ${stat.color} rounded-2xl flex items-center justify-center shadow-lg hover:shadow-xl group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 relative`} style={{ boxShadow: '0 4px 14px 0 rgba(0, 0, 0, 0.1)' }}>
-                          <Icon className="h-7 w-7 text-white relative z-10" />
+                    <CardContent className="p-4 sm:p-5 md:p-6 h-full flex flex-col relative z-10">
+                      <div className="flex items-start justify-between mb-3 sm:mb-4">
+                        <div className={`w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 bg-gradient-to-br ${stat.color} rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg hover:shadow-xl group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 relative`} style={{ boxShadow: '0 4px 14px 0 rgba(0, 0, 0, 0.1)' }}>
+                          <Icon className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7 text-white relative z-10" />
                         </div>
                         {stat.trend === 'up' && (
                           <div className="flex items-center gap-1 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full">
@@ -405,18 +405,18 @@ export default function CitizenPortal() {
                         )}
                       </div>
                       
-                      <div className="space-y-3 flex-1 flex flex-col">
+                      <div className="space-y-2 sm:space-y-3 flex-1 flex flex-col">
                         <div>
-                          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">{stat.title}</p>
-                          <p className="text-sm text-gray-400 dark:text-gray-500">{stat.subtitle}</p>
+                          <p className="text-[10px] sm:text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-0.5 sm:mb-1">{stat.title}</p>
+                          <p className="text-[10px] sm:text-xs md:text-sm text-gray-400 dark:text-gray-500">{stat.subtitle}</p>
                         </div>
                         
-                        <div className="flex items-baseline gap-2">
-                          <p className="text-4xl sm:text-5xl font-bold bg-gradient-to-br from-gray-900 to-gray-700 dark:from-white dark:to-gray-200 bg-clip-text text-transparent">{stat.value}</p>
+                        <div className="flex items-baseline gap-1 sm:gap-2">
+                          <p className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold bg-gradient-to-br from-gray-900 to-gray-700 dark:from-white dark:to-gray-200 bg-clip-text text-transparent">{stat.value}</p>
                         </div>
                         
-                        <div className="pt-2 border-t border-gray-100 dark:border-gray-600">
-                          <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
+                        <div className="pt-1 sm:pt-2 border-t border-gray-100 dark:border-gray-600">
+                          <p className="text-[10px] sm:text-xs font-semibold text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
                             {stat.change}
                           </p>
                         </div>
