@@ -17,7 +17,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   login: (email: string, password: string, userType: string) => Promise<boolean>;
-  signup: (data: any) => Promise<boolean>;
+  signup: (data: any) => Promise<{ success: boolean; error?: string; details?: any }>;
   logout: () => void;
   isLoading: boolean;
   isAuthenticated: boolean;
@@ -119,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signup = async (data: any): Promise<boolean> => {
+  const signup = async (data: any): Promise<{ success: boolean; error?: string; details?: any }> => {
     try {
       setIsLoading(true);
       const response = await fetch(`${API_BASE_URL}/auth/signup/`, {
@@ -136,14 +136,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setToken(responseData.token);
         setUser(responseData.user);
         localStorage.setItem('auth_token', responseData.token);
-        return true;
+        return { success: true };
       } else {
+        // Log full error details for debugging
         console.error('Signup error:', responseData.error);
-        return false;
+        console.error('Validation details:', responseData.details);
+        
+        return {
+          success: false,
+          error: responseData.error || 'Validation failed',
+          details: responseData.details
+        };
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Signup error:', error);
-      return false;
+      return {
+        success: false,
+        error: error.message || 'Network error. Please try again.'
+      };
     } finally {
       setIsLoading(false);
     }

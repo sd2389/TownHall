@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import AdminLayout from "@/components/layout/AdminLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,6 +46,7 @@ interface TownChangeRequest {
 
 export default function AdminDashboard() {
   const { user, token } = useAuth();
+  const router = useRouter();
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
   const [townChangeRequests, setTownChangeRequests] = useState<TownChangeRequest[]>([]);
   const [stats, setStats] = useState({
@@ -54,19 +56,46 @@ export default function AdminDashboard() {
     rejectedToday: 0
   });
   const [loading, setLoading] = useState(true);
+  const [adminToken, setAdminToken] = useState<string | null>(null);
+  const [adminUser, setAdminUser] = useState<any>(null);
+
+  // Check for admin authentication
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedToken = localStorage.getItem('admin_token');
+      const storedUser = localStorage.getItem('admin_user');
+      
+      if (storedToken && storedUser) {
+        setAdminToken(storedToken);
+        setAdminUser(JSON.parse(storedUser));
+      } else {
+        // Check if user is superuser from regular auth
+        if (user?.is_superuser || user?.role === 'superuser') {
+          // Allow access with regular token
+          setAdminToken(token || '');
+          setAdminUser(user);
+        } else if (!loading) {
+          // Only redirect if we're done loading and no auth found
+          router.push('/admin/login');
+        }
+      }
+    }
+  }, [user, token, router, loading]);
 
   const fetchData = useCallback(async () => {
+    if (!adminToken) return;
+    
     try {
       const [usersRes, townChangesRes] = await Promise.all([
         fetch(`${API_BASE_URL}/auth/pending-users/`, {
           headers: {
-            'Authorization': `Token ${token}`,
+            'Authorization': `Token ${adminToken}`,
             'Content-Type': 'application/json',
           },
         }),
         fetch(`${API_BASE_URL}/towns/change-requests/`, {
           headers: {
-            'Authorization': `Token ${token}`,
+            'Authorization': `Token ${adminToken}`,
             'Content-Type': 'application/json',
           },
         }),
@@ -88,20 +117,22 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [user, token]);
+  }, [adminToken]);
 
   useEffect(() => {
-    if (user?.role === 'government') {
+    if (adminToken && (adminUser?.is_superuser || adminUser?.is_staff || user?.is_superuser)) {
       fetchData();
     }
-  }, [user, fetchData]);
+  }, [adminToken, adminUser, user, fetchData]);
 
   const handleApproveUser = async (userId: number) => {
+    if (!adminToken) return;
+    
     try {
       const response = await fetch(`${API_BASE_URL}/auth/approve-user/${userId}/`, {
         method: 'POST',
         headers: {
-          'Authorization': `Token ${token}`,
+          'Authorization': `Token ${adminToken}`,
           'Content-Type': 'application/json',
         },
       });
@@ -116,6 +147,8 @@ export default function AdminDashboard() {
   };
 
   const handleRejectUser = async (userId: number) => {
+    if (!adminToken) return;
+    
     if (!confirm('Are you sure you want to reject this user? This cannot be undone.')) {
       return;
     }
@@ -124,7 +157,7 @@ export default function AdminDashboard() {
       const response = await fetch(`${API_BASE_URL}/auth/reject-user/${userId}/`, {
         method: 'POST',
         headers: {
-          'Authorization': `Token ${token}`,
+          'Authorization': `Token ${adminToken}`,
           'Content-Type': 'application/json',
         },
       });
@@ -146,6 +179,15 @@ export default function AdminDashboard() {
       default: return <Users className="h-5 w-5 text-gray-600" />;
     }
   };
+
+  // Show loading if no admin token
+  if (!adminToken) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <ProtectedRoute allowedRoles={['government', 'superuser']}>

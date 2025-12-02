@@ -3,6 +3,7 @@ from . import views
 
 urlpatterns = [
     path('login/', views.login_view, name='login'),
+    path('admin-login/', views.admin_login_view, name='admin_login'),
     path('signup/', views.signup_view, name='signup'),
     path('logout/', views.logout_view, name='logout'),
     path('profile/', views.user_profile_view, name='user_profile'),
@@ -10,4 +11,6 @@ urlpatterns = [
     path('all-users/', views.list_all_users_view, name='list_all_users'),
     path('approve-user/<int:user_id>/', views.approve_user_view, name='approve_user'),
     path('reject-user/<int:user_id>/', views.reject_user_view, name='reject_user'),
+    path('user-details/<int:user_id>/', views.get_user_details_view, name='get_user_details'),
+    path('deactivate-user/<int:user_id>/', views.deactivate_user_view, name='deactivate_user'),
 ]

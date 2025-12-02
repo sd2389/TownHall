@@ -146,6 +146,10 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+# Media files (User uploads)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
@@ -182,9 +186,27 @@ REST_FRAMEWORK = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
 ]
 
-CORS_ALLOW_CREDENTIALS = True
+# Allow all origins in development (for Next.js dev server on any port)
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+    CORS_ALLOW_CREDENTIALS = True
+    CORS_ALLOW_HEADERS = [
+        'accept',
+        'accept-encoding',
+        'authorization',
+        'content-type',
+        'dnt',
+        'origin',
+        'user-agent',
+        'x-csrftoken',
+        'x-requested-with',
+    ]
+else:
+    CORS_ALLOW_CREDENTIALS = True
 
 # Login/Logout URLs
 LOGIN_URL = '/login/'

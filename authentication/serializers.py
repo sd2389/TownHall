@@ -55,12 +55,12 @@ class SignupSerializer(serializers.Serializer):
     )
     townId = serializers.IntegerField(required=True)
     
-    # Address fields
-    streetAddress = serializers.CharField(required=True)
+    # Address fields (required for citizen and business, optional for government)
+    streetAddress = serializers.CharField(required=False, allow_blank=True)
     aptSuite = serializers.CharField(required=False, allow_blank=True)
-    city = serializers.CharField(required=True)
-    state = serializers.CharField(required=True)
-    zipCode = serializers.CharField(required=True)
+    city = serializers.CharField(required=False, allow_blank=True)
+    state = serializers.CharField(required=False, allow_blank=True)
+    zipCode = serializers.CharField(required=False, allow_blank=True)
     
     # Citizen specific
     dateOfBirth = serializers.DateField(required=False, allow_null=True)
@@ -85,7 +85,7 @@ class SignupSerializer(serializers.Serializer):
         return value.lower()
     
     def validate(self, attrs):
-        """Validate business-specific fields"""
+        """Validate user type specific fields"""
         user_type = attrs.get('userType')
         
         if user_type == 'business':
@@ -93,12 +93,49 @@ class SignupSerializer(serializers.Serializer):
                 raise serializers.ValidationError({
                     'businessName': 'Business name is required for business accounts.'
                 })
+            # Business and citizen require address fields
+            if not attrs.get('streetAddress'):
+                raise serializers.ValidationError({
+                    'streetAddress': 'Street address is required for business accounts.'
+                })
+            if not attrs.get('city'):
+                raise serializers.ValidationError({
+                    'city': 'City is required for business accounts.'
+                })
+            if not attrs.get('state'):
+                raise serializers.ValidationError({
+                    'state': 'State is required for business accounts.'
+                })
+            if not attrs.get('zipCode'):
+                raise serializers.ValidationError({
+                    'zipCode': 'ZIP code is required for business accounts.'
+                })
+        
+        elif user_type == 'citizen':
+            # Citizen requires address fields
+            if not attrs.get('streetAddress'):
+                raise serializers.ValidationError({
+                    'streetAddress': 'Street address is required for citizen accounts.'
+                })
+            if not attrs.get('city'):
+                raise serializers.ValidationError({
+                    'city': 'City is required for citizen accounts.'
+                })
+            if not attrs.get('state'):
+                raise serializers.ValidationError({
+                    'state': 'State is required for citizen accounts.'
+                })
+            if not attrs.get('zipCode'):
+                raise serializers.ValidationError({
+                    'zipCode': 'ZIP code is required for citizen accounts.'
+                })
         
         elif user_type == 'government':
             if not attrs.get('employeeId'):
                 raise serializers.ValidationError({
                     'employeeId': 'Employee ID is required for government accounts.'
                 })
+            # Government users don't require address fields (they use officeAddress)
         
         return attrs
 

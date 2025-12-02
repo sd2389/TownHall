@@ -1,6 +1,6 @@
 "use client";
 
-import { Shield, Users, MapPin, FileText, Settings, Clock, LogOut } from "lucide-react";
+import { Shield, Users, MapPin, FileText, Settings, Clock, LogOut, Building2 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
-  currentPage?: 'dashboard' | 'users' | 'towns' | 'reports' | 'settings';
+  currentPage?: 'dashboard' | 'users' | 'towns' | 'departments' | 'reports' | 'settings';
 }
 
 export default function AdminLayout({ children, currentPage = 'dashboard' }: AdminLayoutProps) {
@@ -25,6 +25,7 @@ export default function AdminLayout({ children, currentPage = 'dashboard' }: Adm
     { id: 'dashboard', label: 'Dashboard', icon: Shield, href: '/admin' },
     { id: 'users', label: 'User Management', icon: Users, href: '/admin/users' },
     { id: 'towns', label: 'Towns', icon: MapPin, href: '/admin/towns' },
+    { id: 'departments', label: 'Departments', icon: Building2, href: '/admin/departments' },
     { id: 'reports', label: 'Reports', icon: FileText, href: '/admin/reports' },
     { id: 'settings', label: 'Settings', icon: Settings, href: '/admin/settings' },
   ];
@@ -96,6 +97,12 @@ export default function AdminLayout({ children, currentPage = 'dashboard' }: Adm
                     <div className="flex items-center space-x-3 px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
                       <MapPin className="h-4 w-4 text-gray-600" />
                       <span className="text-sm">Town Changes</span>
+                    </div>
+                  </Link>
+                  <Link href="/admin/departments">
+                    <div className="flex items-center space-x-3 px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                      <Building2 className="h-4 w-4 text-gray-600" />
+                      <span className="text-sm">Manage Departments</span>
                     </div>
                   </Link>
                 </div>

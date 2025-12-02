@@ -10,12 +10,29 @@ class Town(models.Model):
     is_active = models.BooleanField(default=True)
     zip_codes = models.JSONField(default=list, blank=True, help_text="List of ZIP codes for this town")
     
+    # Town approver - the government official who can approve/reject citizens and business owners
+    approver = models.ForeignKey(
+        'government.GovernmentOfficial',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='approved_towns',
+        help_text="The government official designated to approve/reject citizens and business owners for this town"
+    )
+    
     # Emergency contacts
     emergency_police = models.CharField(max_length=20, default='911', help_text="Police emergency number")
     emergency_fire = models.CharField(max_length=20, default='911', help_text="Fire department emergency number")
     emergency_medical = models.CharField(max_length=20, default='911', help_text="Medical/EMS emergency number")
     emergency_non_urgent = models.CharField(max_length=20, blank=True, help_text="Non-urgent dispatch number")
     emergency_dispatch = models.CharField(max_length=20, blank=True, help_text="Emergency dispatch number")
+    emergency_animal_control = models.CharField(max_length=20, blank=True, help_text="Animal control emergency number")
+    emergency_poison_control = models.CharField(max_length=20, blank=True, help_text="Poison control center number")
+    emergency_utilities = models.CharField(max_length=20, blank=True, help_text="Utilities emergency (gas, water, electric)")
+    emergency_public_works = models.CharField(max_length=20, blank=True, help_text="Public works emergency number")
+    emergency_mental_health = models.CharField(max_length=20, blank=True, help_text="Mental health crisis hotline")
+    emergency_child_protective = models.CharField(max_length=20, blank=True, help_text="Child protective services number")
+    emergency_road_department = models.CharField(max_length=20, blank=True, help_text="Road/Highway department emergency")
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

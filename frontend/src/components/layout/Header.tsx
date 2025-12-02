@@ -100,7 +100,6 @@ export default function Header({ userType, userName, userEmail }: HeaderProps) {
           {userType === "citizen" ? (
             <>
               <Link href="/citizen/complaints"><Button variant="ghost" className="text-sm font-medium">My Complaints</Button></Link>
-              <Link href="/citizen/file-new"><Button variant="ghost" className="text-sm font-medium">File New</Button></Link>
               <Link href="/citizen/services"><Button variant="ghost" className="text-sm font-medium">Services</Button></Link>
               <Link href="/citizen/notifications"><Button variant="ghost" className="text-sm font-medium">Notifications</Button></Link>
             </>
@@ -292,9 +291,6 @@ export default function Header({ userType, userName, userEmail }: HeaderProps) {
               <>
                 <Link href="/citizen/complaints" onClick={() => setIsMobileMenuOpen(false)}>
                   <Button variant="ghost" className="w-full justify-start text-sm h-10 rounded-lg hover:bg-accent transition-colors">My Complaints</Button>
-                </Link>
-                <Link href="/citizen/file-new" onClick={() => setIsMobileMenuOpen(false)}>
-                  <Button variant="ghost" className="w-full justify-start text-sm h-10 rounded-lg hover:bg-accent transition-colors">File New</Button>
                 </Link>
                 <Link href="/citizen/services" onClick={() => setIsMobileMenuOpen(false)}>
                   <Button variant="ghost" className="w-full justify-start text-sm h-10 rounded-lg hover:bg-accent transition-colors">Services</Button>

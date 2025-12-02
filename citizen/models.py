@@ -34,16 +34,81 @@ class CitizenComplaint(models.Model):
     ]
     
     citizen = models.ForeignKey(CitizenProfile, on_delete=models.CASCADE)
+    town = models.ForeignKey('towns.Town', on_delete=models.CASCADE, related_name='citizen_complaints', null=True, blank=True)
     title = models.CharField(max_length=200)
     description = models.TextField()
     category = models.CharField(max_length=100)
+    location = models.CharField(max_length=200, blank=True, help_text="Location of the issue")
     priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='medium')
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='pending')
+    assigned_to = models.CharField(max_length=200, blank=True, help_text="Department or person assigned")
+    estimated_resolution = models.CharField(max_length=200, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+    class Meta:
+        ordering = ['-created_at']
+    
     def __str__(self):
         return f"{self.title} - {self.citizen.user.get_full_name()}"
+
+
+class ComplaintAttachment(models.Model):
+    """Model for complaint media attachments (images, documents, etc.)"""
+    complaint = models.ForeignKey(CitizenComplaint, on_delete=models.CASCADE, related_name='attachments')
+    file = models.FileField(upload_to='complaints/%Y/%m/%d/')
+    file_name = models.CharField(max_length=255)
+    file_type = models.CharField(max_length=50, help_text="MIME type or file extension")
+    file_size = models.IntegerField(help_text="File size in bytes")
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-uploaded_at']
+    
+    def __str__(self):
+        return f"{self.file_name} - {self.complaint.title}"
+
+
+class ComplaintComment(models.Model):
+    """Model for comments/updates on complaints by government officials"""
+    complaint = models.ForeignKey(CitizenComplaint, on_delete=models.CASCADE, related_name='comments')
+    official = models.ForeignKey('government.GovernmentOfficial', on_delete=models.CASCADE, null=True, blank=True)
+    comment_text = models.TextField()
+    is_notification = models.BooleanField(default=False, help_text="Whether this comment should notify the citizen")
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Comment on {self.complaint.title} by {self.official.user.get_full_name() if self.official else 'System'}"
+
+
+class CitizenNotification(models.Model):
+    """Model for notifications sent to citizens"""
+    NOTIFICATION_TYPE_CHOICES = [
+        ('complaint_update', 'Complaint Update'),
+        ('announcement', 'Announcement'),
+        ('general', 'General'),
+    ]
+    
+    citizen = models.ForeignKey(CitizenProfile, on_delete=models.CASCADE, related_name='notifications')
+    notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPE_CHOICES, default='complaint_update')
+    title = models.CharField(max_length=200)
+    message = models.TextField()
+    complaint = models.ForeignKey(CitizenComplaint, on_delete=models.CASCADE, null=True, blank=True, related_name='notifications')
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['citizen', '-created_at']),
+            models.Index(fields=['is_read']),
+        ]
+    
+    def __str__(self):
+        return f"Notification for {self.citizen.user.username} - {self.title}"
 
 
 class CitizenFeedback(models.Model):

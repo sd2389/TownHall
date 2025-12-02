@@ -73,13 +73,21 @@ def login_view(request):
             'error': f'Invalid account type. Your account is registered as {profile.get_role_display()}, not {user_type}.'
         }, status=status.HTTP_403_FORBIDDEN)
     
-    # Check approval status for citizens and businesses
-    if profile.role in ['citizen', 'business'] and not profile.is_approved and not is_superuser:
-        return Response({
-            'error': 'Account pending approval',
-            'pending_approval': True,
-            'message': 'Your account is pending approval from government officials.'
-        }, status=status.HTTP_403_FORBIDDEN)
+    # Check approval status
+    # Government users need admin approval, citizens/business need government approval
+    if not profile.is_approved and not is_superuser:
+        if profile.role == 'government':
+            return Response({
+                'error': 'Account pending approval',
+                'pending_approval': True,
+                'message': 'Your account is pending approval from an administrator.'
+            }, status=status.HTTP_403_FORBIDDEN)
+        elif profile.role in ['citizen', 'business']:
+            return Response({
+                'error': 'Account pending approval',
+                'pending_approval': True,
+                'message': 'Your account is pending approval from government officials.'
+            }, status=status.HTTP_403_FORBIDDEN)
     
     # Create or get token
     token, created = Token.objects.get_or_create(user=user)
@@ -152,7 +160,8 @@ def signup_view(request):
             }, status=status.HTTP_400_BAD_REQUEST)
     
     # Determine if user needs approval
-    needs_approval = user_type in ['citizen', 'business']
+    # Government users need admin approval, citizens/business need government approval
+    needs_approval = user_type in ['citizen', 'business', 'government']
     
     try:
         with transaction.atomic():
@@ -166,12 +175,13 @@ def signup_view(request):
             )
             
             # Create user profile
+            # All new users (except superusers) need approval
             profile = UserProfile.objects.create(
                 user=user,
                 role=user_type,
                 phone_number=phone_number,
                 town=town,
-                is_approved=not needs_approval  # Government and superuser are auto-approved
+                is_approved=False  # All users need approval (government by admin, citizens/business by government)
             )
             
             # Create role-specific profile
@@ -339,38 +349,67 @@ def user_profile_view(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def list_pending_users_view(request):
-    """List pending approval users (government only)"""
+    """List pending approval users (government only or superuser)"""
     try:
-        profile = UserProfile.objects.get(user=request.user)
-        
         # Allow superusers to access this view
         is_superuser = request.user.is_superuser
         
-        if profile.role != 'government' and not is_superuser:
-            return Response({
-                'error': 'Only government officials or superusers can view pending users'
-            }, status=status.HTTP_403_FORBIDDEN)
+        # For non-superusers, check if they are government officials
+        if not is_superuser:
+            try:
+                profile = UserProfile.objects.get(user=request.user)
+                
+                if profile.role != 'government':
+                    return Response({
+                        'error': 'Only government officials or superusers can view pending users'
+                    }, status=status.HTTP_403_FORBIDDEN)
+                
+                # Government user must have a town assigned
+                if not profile.town:
+                    return Response({
+                        'error': 'You are not assigned to a town'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+            except UserProfile.DoesNotExist:
+                return Response({
+                    'error': 'User profile not found. Only government officials or superusers can view pending users.'
+                }, status=status.HTTP_403_FORBIDDEN)
         
         # Get unapproved users
-        # Superusers can see all, government officials see only their town
+        # Superusers can see all pending users (including government)
+        # Government officials with approval permissions can see citizens/business from their town
         if is_superuser:
-            # Superusers see all pending users
+            # Superusers see all pending users (including government users)
             pending_profiles = UserProfile.objects.filter(
-                is_approved=False,
-                role__in=['citizen', 'business']
-            ).select_related('user')
+                is_approved=False
+            ).select_related('user', 'town')
         else:
-            # Government officials see only their town
+            # Only government officials with approval permissions can see pending users
+            profile = UserProfile.objects.get(user=request.user)
+            
+            # Check if this government official has approval permissions
+            from government.models import GovernmentOfficial
+            try:
+                gov_official = GovernmentOfficial.objects.get(user=request.user)
+                if not gov_official.can_approve_users:
+                    return Response({
+                        'error': 'You do not have permission to view pending users. Please contact an administrator.'
+                    }, status=status.HTTP_403_FORBIDDEN)
+            except GovernmentOfficial.DoesNotExist:
+                return Response({
+                    'error': 'Government official profile not found'
+                }, status=status.HTTP_404_NOT_FOUND)
+            
+            # Government officials with permissions see only citizens/business from their town
             if not profile.town:
                 return Response({
-                    'error': 'You are not assigned to a town'
-                }, status=status.HTTP_400_BAD_REQUEST)
+                    'error': 'You must be assigned to a town to view pending users'
+                }, status=status.HTTP_403_FORBIDDEN)
             
             pending_profiles = UserProfile.objects.filter(
                 town=profile.town,
                 is_approved=False,
-                role__in=['citizen', 'business']
-            ).select_related('user')
+                role__in=['citizen', 'business']  # Can't see pending government users
+            ).select_related('user', 'town')
         
         data = []
         for pending_profile in pending_profiles:
@@ -386,25 +425,65 @@ def list_pending_users_view(request):
         
         return Response(data, status=status.HTTP_200_OK)
         
-    except UserProfile.DoesNotExist:
+    except Exception as e:
         return Response({
-            'error': 'User profile not found'
-        }, status=status.HTTP_404_NOT_FOUND)
+            'error': f'An error occurred: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def list_all_users_view(request):
-    """List all users for admin management (including approved, pending, and inactive)"""
+    """List all users
+    - Superusers can view all users
+    - Government officials with view permissions can view citizens/business owners from their town
+    """
     try:
-        # Allow superusers only
-        if not request.user.is_superuser:
-            return Response({
-                'error': 'Only superusers can view all users'
-            }, status=status.HTTP_403_FORBIDDEN)
+        is_superuser = request.user.is_superuser
         
-        # Get all user profiles
-        all_profiles = UserProfile.objects.all().select_related('user').order_by('-created_at')
+        # For non-superusers, check if they have view permissions
+        if not is_superuser:
+            try:
+                viewer_profile = UserProfile.objects.get(user=request.user)
+                
+                if viewer_profile.role != 'government':
+                    return Response({
+                        'error': 'Only government officials with view permissions or administrators can view users'
+                    }, status=status.HTTP_403_FORBIDDEN)
+                
+                # Check if this government official has view permissions
+                from government.models import GovernmentOfficial
+                try:
+                    gov_official = GovernmentOfficial.objects.get(user=request.user)
+                    if not gov_official.can_view_users:
+                        return Response({
+                            'error': 'You do not have permission to view users. Please contact an administrator.'
+                        }, status=status.HTTP_403_FORBIDDEN)
+                except GovernmentOfficial.DoesNotExist:
+                    return Response({
+                        'error': 'Government official profile not found'
+                    }, status=status.HTTP_404_NOT_FOUND)
+                
+                if not viewer_profile.town:
+                    return Response({
+                        'error': 'You must be assigned to a town to view users'
+                    }, status=status.HTTP_403_FORBIDDEN)
+            except UserProfile.DoesNotExist:
+                return Response({
+                    'error': 'User profile not found'
+                }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Get user profiles based on permissions
+        if is_superuser:
+            # Superusers see all users
+            all_profiles = UserProfile.objects.all().select_related('user', 'town').order_by('-created_at')
+        else:
+            # Government officials with view permissions see only citizens/business from their town
+            viewer_profile = UserProfile.objects.get(user=request.user)
+            all_profiles = UserProfile.objects.filter(
+                town=viewer_profile.town,
+                role__in=['citizen', 'business']  # Can't see government users
+            ).select_related('user', 'town').order_by('-created_at')
         
         data = []
         for profile in all_profiles:
@@ -432,15 +511,15 @@ def list_all_users_view(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def approve_user_view(request, user_id):
-    """Approve a user (government only)"""
+    """Approve a user
+    - Superusers (admins) can approve any user (including government users)
+    - Government officials can approve only citizens/business owners from their town
+    """
     try:
-        profile = UserProfile.objects.get(user=request.user)
+        # Superusers can approve any user
+        is_superuser = request.user.is_superuser
         
-        if profile.role != 'government':
-            return Response({
-                'error': 'Only government officials can approve users'
-            }, status=status.HTTP_403_FORBIDDEN)
-        
+        # Get the user to approve
         try:
             user_to_approve = User.objects.get(id=user_id)
             pending_profile = UserProfile.objects.get(user=user_to_approve)
@@ -449,10 +528,61 @@ def approve_user_view(request, user_id):
                 'error': 'User not found'
             }, status=status.HTTP_404_NOT_FOUND)
         
-        if pending_profile.town != profile.town:
+        # Check if user is already approved
+        if pending_profile.is_approved:
             return Response({
-                'error': 'You can only approve users from your town'
-            }, status=status.HTTP_403_FORBIDDEN)
+                'error': 'User is already approved'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # For non-superusers, check if they have approval permissions
+        if not is_superuser:
+            try:
+                approver_profile = UserProfile.objects.get(user=request.user)
+                
+                # Only government officials can approve (superusers handled above)
+                if approver_profile.role != 'government':
+                    return Response({
+                        'error': 'Only government officials with approval permissions or administrators can approve users'
+                    }, status=status.HTTP_403_FORBIDDEN)
+                
+                # Check if this government official has approval permissions
+                from government.models import GovernmentOfficial
+                try:
+                    gov_official = GovernmentOfficial.objects.get(user=request.user)
+                    if not gov_official.can_approve_users:
+                        return Response({
+                            'error': 'You do not have permission to approve users. Please contact an administrator.'
+                        }, status=status.HTTP_403_FORBIDDEN)
+                except GovernmentOfficial.DoesNotExist:
+                    return Response({
+                        'error': 'Government official profile not found'
+                    }, status=status.HTTP_404_NOT_FOUND)
+                
+                # Government user must have a town assigned
+                if not approver_profile.town:
+                    return Response({
+                        'error': 'You must be assigned to a town to approve users'
+                    }, status=status.HTTP_403_FORBIDDEN)
+                
+                # Government officials can only approve citizens/business owners (not government users)
+                if pending_profile.role == 'government':
+                    return Response({
+                        'error': 'Government users can only be approved by administrators'
+                    }, status=status.HTTP_403_FORBIDDEN)
+                
+                # Government officials can only approve users from their town
+                if pending_profile.town != approver_profile.town:
+                    return Response({
+                        'error': 'You can only approve users from your town'
+                    }, status=status.HTTP_403_FORBIDDEN)
+                    
+            except UserProfile.DoesNotExist:
+                return Response({
+                    'error': 'User profile not found. Only government officials or administrators can approve users.'
+                }, status=status.HTTP_403_FORBIDDEN)
+        else:
+            # Superusers can approve anyone, including government users
+            pass
         
         # Approve user
         pending_profile.is_approved = True
@@ -468,24 +598,24 @@ def approve_user_view(request, user_id):
             'token': token.key
         }, status=status.HTTP_200_OK)
         
-    except UserProfile.DoesNotExist:
+    except Exception as e:
         return Response({
-            'error': 'User profile not found'
-        }, status=status.HTTP_404_NOT_FOUND)
+            'error': f'An error occurred: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def reject_user_view(request, user_id):
-    """Reject a user (government only)"""
+    """Reject a user
+    - Superusers (admins) can reject any user (including government users)
+    - Government officials can reject only citizens/business owners from their town
+    """
     try:
-        profile = UserProfile.objects.get(user=request.user)
+        # Superusers can reject any user
+        is_superuser = request.user.is_superuser
         
-        if profile.role != 'government':
-            return Response({
-                'error': 'Only government officials can reject users'
-            }, status=status.HTTP_403_FORBIDDEN)
-        
+        # Get the user to reject
         try:
             user_to_reject = User.objects.get(id=user_id)
             pending_profile = UserProfile.objects.get(user=user_to_reject)
@@ -494,10 +624,55 @@ def reject_user_view(request, user_id):
                 'error': 'User not found'
             }, status=status.HTTP_404_NOT_FOUND)
         
-        if pending_profile.town != profile.town:
-            return Response({
-                'error': 'You can only reject users from your town'
-            }, status=status.HTTP_403_FORBIDDEN)
+        # For non-superusers, check if they have approval permissions
+        if not is_superuser:
+            try:
+                rejecter_profile = UserProfile.objects.get(user=request.user)
+                
+                # Only government officials can reject (superusers handled above)
+                if rejecter_profile.role != 'government':
+                    return Response({
+                        'error': 'Only government officials with approval permissions or administrators can reject users'
+                    }, status=status.HTTP_403_FORBIDDEN)
+                
+                # Check if this government official has approval permissions
+                from government.models import GovernmentOfficial
+                try:
+                    gov_official = GovernmentOfficial.objects.get(user=request.user)
+                    if not gov_official.can_approve_users:
+                        return Response({
+                            'error': 'You do not have permission to reject users. Please contact an administrator.'
+                        }, status=status.HTTP_403_FORBIDDEN)
+                except GovernmentOfficial.DoesNotExist:
+                    return Response({
+                        'error': 'Government official profile not found'
+                    }, status=status.HTTP_404_NOT_FOUND)
+                
+                # Government user must have a town assigned
+                if not rejecter_profile.town:
+                    return Response({
+                        'error': 'You must be assigned to a town to reject users'
+                    }, status=status.HTTP_403_FORBIDDEN)
+                
+                # Government officials can only reject citizens/business owners (not government users)
+                if pending_profile.role == 'government':
+                    return Response({
+                        'error': 'Government users can only be rejected by administrators'
+                    }, status=status.HTTP_403_FORBIDDEN)
+                
+                # Government officials can only reject users from their town
+                if pending_profile.town != rejecter_profile.town:
+                    return Response({
+                        'error': 'You can only reject users from your town'
+                    }, status=status.HTTP_403_FORBIDDEN)
+                    
+            except UserProfile.DoesNotExist:
+                return Response({
+                    'error': 'User profile not found. Only government officials or administrators can reject users.'
+                }, status=status.HTTP_403_FORBIDDEN)
+        else:
+            # Superusers can reject anyone, including government users
+            pass
         
         # Delete user account
         user_to_reject.delete()
@@ -506,7 +681,256 @@ def reject_user_view(request, user_id):
             'message': 'User rejected and removed successfully'
         }, status=status.HTTP_200_OK)
         
-    except UserProfile.DoesNotExist:
+    except Exception as e:
         return Response({
-            'error': 'User profile not found'
-        }, status=status.HTTP_404_NOT_FOUND)
+            'error': f'An error occurred: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_details_view(request, user_id):
+    """Get detailed information about a user
+    - Superusers can view any user
+    - Town approvers can view citizens/business owners from their town
+    """
+    try:
+        is_superuser = request.user.is_superuser
+        
+        # Get the user to view
+        try:
+            target_user = User.objects.get(id=user_id)
+            target_profile = UserProfile.objects.get(user=target_user)
+        except (User.DoesNotExist, UserProfile.DoesNotExist):
+            return Response({
+                'error': 'User not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # For non-superusers, check if they have view permissions
+        if not is_superuser:
+            try:
+                viewer_profile = UserProfile.objects.get(user=request.user)
+                
+                # Only government officials can view user details
+                if viewer_profile.role != 'government':
+                    return Response({
+                        'error': 'Only government officials with view permissions or administrators can view user details'
+                    }, status=status.HTTP_403_FORBIDDEN)
+                
+                # Check if this government official has view permissions
+                from government.models import GovernmentOfficial
+                try:
+                    gov_official = GovernmentOfficial.objects.get(user=request.user)
+                    if not gov_official.can_view_users:
+                        return Response({
+                            'error': 'You do not have permission to view user details. Please contact an administrator.'
+                        }, status=status.HTTP_403_FORBIDDEN)
+                except GovernmentOfficial.DoesNotExist:
+                    return Response({
+                        'error': 'Government official profile not found'
+                    }, status=status.HTTP_404_NOT_FOUND)
+                
+                # Approvers can only view citizens/business owners from their town
+                if target_profile.role == 'government':
+                    return Response({
+                        'error': 'You can only view details of citizens and business owners from your town'
+                    }, status=status.HTTP_403_FORBIDDEN)
+                
+                if target_profile.town != viewer_profile.town:
+                    return Response({
+                        'error': 'You can only view users from your town'
+                    }, status=status.HTTP_403_FORBIDDEN)
+                    
+            except UserProfile.DoesNotExist:
+                return Response({
+                    'error': 'User profile not found'
+                }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Get role-specific profile data
+        role_data = {}
+        if target_profile.is_citizen:
+            try:
+                from authentication.models import CitizenProfile
+                citizen_profile = CitizenProfile.objects.get(user=target_user)
+                role_data = {
+                    'citizenId': citizen_profile.citizen_id,
+                    'address': citizen_profile.address,
+                    'billingAddress': citizen_profile.billing_address,
+                    'dateOfBirth': citizen_profile.date_of_birth,
+                }
+            except:
+                pass
+        elif target_profile.is_business_owner:
+            try:
+                from authentication.models import BusinessOwnerProfile
+                business_profile = BusinessOwnerProfile.objects.get(user=target_user)
+                role_data = {
+                    'businessName': business_profile.business_name,
+                    'businessType': business_profile.business_type,
+                    'businessAddress': business_profile.business_address,
+                    'businessRegistrationNumber': business_profile.business_registration_number,
+                    'website': business_profile.website,
+                    'billingAddress': business_profile.billing_address,
+                }
+            except:
+                pass
+        
+        return Response({
+            'user': {
+                'id': target_user.id,
+                'email': target_user.email,
+                'firstName': target_user.first_name,
+                'lastName': target_user.last_name,
+                'role': target_profile.role,
+                'phoneNumber': target_profile.phone_number,
+                'town': target_profile.town.name if target_profile.town else None,
+                'is_approved': target_profile.is_approved,
+                'approved_by': target_profile.approved_by.email if target_profile.approved_by else None,
+                'approved_at': target_profile.approved_at,
+                'created_at': target_profile.created_at,
+                **role_data
+            }
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({
+            'error': f'An error occurred: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@throttle_classes([LoginThrottle])
+def admin_login_view(request):
+    """Admin login endpoint for Django admin panel access"""
+    try:
+        email = request.data.get('email', '').strip()
+        password = request.data.get('password', '').strip()
+        
+        if not email or not password:
+            return Response({
+                'error': 'Email and password are required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Authenticate user
+        user = authenticate(request, username=email, password=password)
+        
+        if user is None:
+            # Try with email if username didn't work
+            try:
+                user_obj = User.objects.get(email=email)
+                user = authenticate(request, username=user_obj.username, password=password)
+            except User.DoesNotExist:
+                pass
+        
+        if user is None:
+            return Response({
+                'error': 'Invalid email or password'
+            }, status=status.HTTP_401_UNAUTHORIZED)
+        
+        # Check if user is staff or superuser
+        if not (user.is_staff or user.is_superuser):
+            return Response({
+                'error': 'You do not have permission to access the admin panel'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Check if user is active
+        if not user.is_active:
+            return Response({
+                'error': 'Your account has been deactivated'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Create or get token
+        token, created = Token.objects.get_or_create(user=user)
+        
+        return Response({
+            'token': token.key,
+            'user': {
+                'id': user.id,
+                'email': user.email,
+                'username': user.username,
+                'firstName': user.first_name,
+                'lastName': user.last_name,
+                'is_superuser': user.is_superuser,
+                'is_staff': user.is_staff,
+            },
+            'message': 'Admin login successful'
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({
+            'error': f'An error occurred: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def deactivate_user_view(request, user_id):
+    """Deactivate a user account (soft delete by setting is_approved=False)
+    - Superusers can deactivate any user
+    - Town approvers can deactivate citizens/business owners from their town
+    """
+    try:
+        is_superuser = request.user.is_superuser
+        
+        # Get the user to deactivate
+        try:
+            user_to_deactivate = User.objects.get(id=user_id)
+            target_profile = UserProfile.objects.get(user=user_to_deactivate)
+        except (User.DoesNotExist, UserProfile.DoesNotExist):
+            return Response({
+                'error': 'User not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # For non-superusers, check if they have view permissions (needed to deactivate)
+        if not is_superuser:
+            try:
+                deactivator_profile = UserProfile.objects.get(user=request.user)
+                
+                # Only government officials can deactivate
+                if deactivator_profile.role != 'government':
+                    return Response({
+                        'error': 'Only government officials with view permissions or administrators can deactivate users'
+                    }, status=status.HTTP_403_FORBIDDEN)
+                
+                # Check if this government official has view permissions
+                from government.models import GovernmentOfficial
+                try:
+                    gov_official = GovernmentOfficial.objects.get(user=request.user)
+                    if not gov_official.can_view_users:
+                        return Response({
+                            'error': 'You do not have permission to deactivate users. Please contact an administrator.'
+                        }, status=status.HTTP_403_FORBIDDEN)
+                except GovernmentOfficial.DoesNotExist:
+                    return Response({
+                        'error': 'Government official profile not found'
+                    }, status=status.HTTP_404_NOT_FOUND)
+                
+                # Approvers can only deactivate citizens/business owners from their town
+                if target_profile.role == 'government':
+                    return Response({
+                        'error': 'You can only deactivate citizens and business owners from your town'
+                    }, status=status.HTTP_403_FORBIDDEN)
+                
+                if target_profile.town != deactivator_profile.town:
+                    return Response({
+                        'error': 'You can only deactivate users from your town'
+                    }, status=status.HTTP_403_FORBIDDEN)
+                    
+            except UserProfile.DoesNotExist:
+                return Response({
+                    'error': 'User profile not found'
+                }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Deactivate user by setting is_approved to False
+        target_profile.is_approved = False
+        target_profile.save()
+        
+        return Response({
+            'message': 'User deactivated successfully'
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({
+            'error': f'An error occurred: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

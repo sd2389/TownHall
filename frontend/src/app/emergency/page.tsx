@@ -15,6 +15,13 @@ interface EmergencyContactData {
     medical?: string;
     non_urgent?: string;
     dispatch?: string;
+    animal_control?: string;
+    poison_control?: string;
+    utilities?: string;
+    public_works?: string;
+    mental_health?: string;
+    child_protective?: string;
+    road_department?: string;
   };
 }
 

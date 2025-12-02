@@ -3,15 +3,20 @@ from .models import UserProfile
 
 
 class IsGovernmentOfficial(permissions.BasePermission):
-    """Permission to check if user is a government official"""
+    """Permission to check if user is a government official and approved"""
     
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
         
+        # Superusers have all permissions
+        if request.user.is_superuser:
+            return True
+        
         try:
             profile = UserProfile.objects.get(user=request.user)
-            return profile.role == 'government'
+            # Must be government official and approved
+            return profile.role == 'government' and profile.is_approved
         except UserProfile.DoesNotExist:
             return False
 
@@ -60,7 +65,7 @@ class IsSameTown(permissions.BasePermission):
 
 
 class IsGovernmentOfTown(permissions.BasePermission):
-    """Permission to check if user is government official of a specific town"""
+    """Permission to check if user is government official of a specific town and approved"""
     
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
@@ -73,8 +78,8 @@ class IsGovernmentOfTown(permissions.BasePermission):
         try:
             profile = UserProfile.objects.get(user=request.user)
             
-            # Must be government official
-            if profile.role != 'government':
+            # Must be government official and approved
+            if profile.role != 'government' or not profile.is_approved:
                 return False
             
             # Must have town assigned
@@ -130,10 +135,9 @@ class IsApprovedOrReadOnly(permissions.BasePermission):
         
         try:
             profile = UserProfile.objects.get(user=request.user)
-            # Only citizens and business need approval
-            if profile.role in ['citizen', 'business']:
-                return profile.is_approved
-            return True
+            # All users (citizen, business, government) need approval
+            # Only superusers are exempt
+            return profile.is_approved
         except UserProfile.DoesNotExist:
             return False
 

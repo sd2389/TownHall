@@ -15,6 +15,7 @@ import {
   TrendingUp, 
   Clock, 
   CheckCircle, 
+  CheckCircle2,
   AlertCircle,
   Plus,
   Search,
@@ -49,6 +50,7 @@ import {
 import Layout from "@/components/layout/Layout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
+import { announcementsApi, complaintsApi } from "@/lib/api";
 import React, { useState, useEffect } from "react";
 
 export default function CitizenPortal() {
@@ -60,6 +62,17 @@ export default function CitizenPortal() {
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [filterStatus, setFilterStatus] = useState<'all' | 'open' | 'closed'>('all');
   const [proposals, setProposals] = useState<any[]>([]);
+  const [complaints, setComplaints] = useState<any[]>([]);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [isLoadingComplaints, setIsLoadingComplaints] = useState(true);
+  const [isLoadingAnnouncements, setIsLoadingAnnouncements] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<any>(null);
+  const [openAnnouncementDialog, setOpenAnnouncementDialog] = useState<number | null>(null);
+  const [announcementQuestions, setAnnouncementQuestions] = useState<any[]>([]);
+  const [newQuestion, setNewQuestion] = useState("");
+  const [isSubmittingQuestion, setIsSubmittingQuestion] = useState(false);
+  const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
 
   // Voting functionality
   const handleVote = (proposalId: number, voteType: 'support' | 'oppose') => {
@@ -99,6 +112,38 @@ export default function CitizenPortal() {
       }
       return proposal;
     }));
+  };
+
+  // Fetch questions for an announcement
+  const fetchAnnouncementQuestions = async (announcementId: number) => {
+    try {
+      setIsLoadingQuestions(true);
+      const questions = await announcementsApi.questions.list(announcementId);
+      setAnnouncementQuestions(questions);
+    } catch (err: any) {
+      console.error('Error fetching questions:', err);
+    } finally {
+      setIsLoadingQuestions(false);
+    }
+  };
+
+  // Submit a question for an announcement
+  const handleSubmitQuestion = async () => {
+    if (!newQuestion.trim() || !selectedAnnouncement) return;
+    
+    try {
+      setIsSubmittingQuestion(true);
+        const response = await announcementsApi.questions.create(selectedAnnouncement.id, newQuestion.trim());
+      
+      // Add the new question to the list
+      setAnnouncementQuestions([response.question, ...announcementQuestions]);
+      setNewQuestion("");
+    } catch (err: any) {
+      console.error('Error submitting question:', err);
+      alert(err.message || 'Failed to submit question');
+    } finally {
+      setIsSubmittingQuestion(false);
+    }
   };
 
   // Comment functionality
@@ -155,149 +200,92 @@ export default function CitizenPortal() {
     return proposal.status === filterStatus;
   });
 
-  const complaints = [
-    {
-      id: 1,
-      title: "Pothole on Main Street",
-      description: "Large pothole causing damage to vehicles",
-      status: "in_progress",
-      priority: "high",
-      created: "2024-01-15",
-      category: "Infrastructure",
-      location: "Main Street & 5th Ave",
-      assignedTo: "Public Works Dept",
-      estimatedResolution: "3 days"
-    },
-    {
-      id: 2,
-      title: "Street Light Out",
-      description: "Street light not working on Oak Avenue",
-      status: "resolved",
-      priority: "medium",
-      created: "2024-01-10",
-      category: "Utilities",
-      location: "Oak Avenue",
-      assignedTo: "Utilities Dept",
-      estimatedResolution: "Completed"
-    },
-    {
-      id: 3,
-      title: "Noise Complaint",
-      description: "Construction work during night hours",
-      status: "pending",
-      priority: "low",
-      created: "2024-01-20",
-      category: "Noise",
-      location: "Downtown Area",
-      assignedTo: "Code Enforcement",
-      estimatedResolution: "1 week"
-    }
-  ];
-
-  const announcements = [
-    {
-      id: 1,
-      title: "New Park Opening",
-      description: "Join us for the grand opening of Central Park with live music and food trucks",
-      date: "2024-02-01",
-      priority: "high",
-      type: "Event"
-    },
-    {
-      id: 2,
-      title: "Road Closure Notice",
-      description: "Main Street will be closed for maintenance from 6 AM to 6 PM",
-      date: "2024-01-25",
-      priority: "medium",
-      type: "Alert"
-    },
-    {
-      id: 3,
-      title: "Community Meeting",
-      description: "Monthly town hall meeting to discuss upcoming projects",
-      date: "2024-01-30",
-      priority: "low",
-      type: "Meeting"
-    }
-  ];
-
-  const billProposals = [
-    {
-      id: 1,
-      title: "Green Energy Initiative",
-      summary: "Proposal to install solar panels on all municipal buildings to reduce carbon footprint",
-      fullText: "This comprehensive green energy initiative aims to install solar panels on all municipal buildings including city hall, libraries, and community centers. The project will reduce our city's carbon footprint by 40% and save approximately $2M annually in energy costs. The initiative includes a 3-year implementation plan with community input sessions and regular progress updates.",
-      proposer: "David Kim - City Planning Officer",
-      department: "Urban Development",
-      date: "2024-01-20",
-      status: "open",
-      supportCount: 156,
-      opposeCount: 23,
-      comments: [
-        {
-          id: 1,
-          author: "Maria Lopez",
-          text: "This is a great initiative! I fully support renewable energy projects.",
-          date: "2024-01-21",
-          likes: 12
-        },
-        {
-          id: 2,
-          author: "John Smith",
-          text: "What about the initial cost? How will this affect our taxes?",
-          date: "2024-01-22",
-          likes: 8
-        }
-      ]
-    },
-    {
-      id: 2,
-      title: "Pedestrian Safety Improvements",
-      summary: "Installation of crosswalks and traffic calming measures on Main Street",
-      fullText: "This proposal focuses on improving pedestrian safety along Main Street by installing new crosswalks, pedestrian signals, and traffic calming measures. The project includes speed bumps, better lighting, and designated bike lanes. Estimated cost is $500K with completion expected within 6 months.",
-      proposer: "Sarah Johnson - Traffic Safety Director",
-      department: "Public Works",
-      date: "2024-01-18",
-      status: "open",
-      supportCount: 89,
-      opposeCount: 15,
-      comments: [
-        {
-          id: 3,
-          author: "Lisa Chen",
-          text: "Finally! Main Street is so dangerous for pedestrians. This is much needed.",
-          date: "2024-01-19",
-          likes: 15
-        }
-      ]
-    },
-    {
-      id: 3,
-      title: "Community Center Renovation",
-      summary: "Major renovation of the downtown community center including new facilities and accessibility improvements",
-      fullText: "This proposal outlines a comprehensive renovation of the downtown community center, including new meeting rooms, updated kitchen facilities, improved accessibility features, and modern technology infrastructure. The project will cost $1.2M and take 8 months to complete.",
-      proposer: "Michael Brown - Community Services Director",
-      department: "Community Services",
-      date: "2024-01-15",
-      status: "closed",
-      supportCount: 203,
-      opposeCount: 45,
-      comments: [
-        {
-          id: 4,
-          author: "Robert Wilson",
-          text: "The community center needs this renovation badly. I support this proposal.",
-          date: "2024-01-16",
-          likes: 22
-        }
-      ]
-    }
-  ];
-
-  // Initialize proposals with billProposals data
+  // Fetch complaints from API
   useEffect(() => {
-    setProposals(billProposals);
-  }, []);
+    const fetchComplaints = async () => {
+      try {
+        setIsLoadingComplaints(true);
+        setError(null);
+        const data = await complaintsApi.list();
+        setComplaints(data);
+      } catch (err: any) {
+        console.error('Error fetching complaints:', err);
+        setError(err.message || 'Failed to load complaints');
+        setComplaints([]);
+      } finally {
+        setIsLoadingComplaints(false);
+      }
+    };
+
+    if (user) {
+      fetchComplaints();
+    }
+  }, [user]);
+
+  // Fetch announcements from API
+  useEffect(() => {
+    const fetchAnnouncements = async () => {
+      try {
+        setIsLoadingAnnouncements(true);
+        setError(null);
+        const response = await announcementsApi.list({ status: 'published' });
+        console.log('Fetched announcements response:', response); // Debug log
+        
+        // Handle both array response and object with announcements (for backward compatibility)
+        const data = Array.isArray(response) ? response : (response.announcements || []);
+        
+        // Map API response to match frontend format
+        const mappedData = data.map((announcement: any) => ({
+          id: announcement.id,
+          title: announcement.title,
+          description: announcement.description || announcement.content?.substring(0, 150) || '',
+          date: announcement.date || announcement.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+          priority: announcement.priority || 'medium',
+          type: announcement.type ? (announcement.type.charAt(0).toUpperCase() + announcement.type.slice(1)) : 'Alert', // Capitalize first letter
+          content: announcement.content || announcement.description || '',
+          author: announcement.author || 'Government Official',
+          department: announcement.department || 'General',
+          views: announcement.views || 0,
+          tags: announcement.tags || [],
+          lastUpdated: announcement.lastUpdated || announcement.date,
+          publishDate: announcement.publishDate || announcement.date,
+          expiryDate: announcement.expiryDate,
+          town_name: announcement.town_name,
+          status: announcement.status || 'published',
+        }));
+        console.log('Mapped announcements:', mappedData); // Debug log
+        setAnnouncements(mappedData);
+      } catch (err: any) {
+        console.error('Error fetching announcements:', err);
+        setError(err.message || 'Failed to load announcements');
+        setAnnouncements([]);
+      } finally {
+        setIsLoadingAnnouncements(false);
+      }
+    };
+
+    if (user) {
+      fetchAnnouncements();
+    }
+  }, [user]);
+
+  // Proposals will be fetched from API when that feature is implemented
+  // For now, proposals array is empty and will be populated from API
+  useEffect(() => {
+    // TODO: Implement proposals API endpoint
+    // const fetchProposals = async () => {
+    //   try {
+    //     const data = await proposalsApi.list();
+    //     setProposals(data);
+    //   } catch (err: any) {
+    //     console.error('Error fetching proposals:', err);
+    //   }
+    // };
+    // if (user) {
+    //   fetchProposals();
+    // }
+    setProposals([]);
+  }, [user]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -343,7 +331,7 @@ export default function CitizenPortal() {
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2 leading-tight">
-                    Welcome back, {user?.firstName}! 👋
+                    Welcome, {user?.firstName}! 👋
                   </h1>
                   <p className="text-blue-100 text-xs sm:text-sm md:text-base leading-relaxed">
                     Track your complaints, participate in proposals, and stay engaged with your community
@@ -352,7 +340,9 @@ export default function CitizenPortal() {
                 <Button 
                   size="lg" 
                   className="w-full sm:w-auto bg-white text-[#003153] hover:bg-blue-50 font-semibold shadow-md transition-all duration-300 transform hover:scale-105"
-                  onClick={() => alert('Redirecting to File New Complaint...')}
+                  onClick={() => {
+                    window.location.href = '/citizen/complaints/create';
+                  }}
                 >
                   <Plus className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                   <span className="text-sm sm:text-base">File New Complaint</span>
@@ -892,74 +882,362 @@ export default function CitizenPortal() {
                     </div>
                     <CardDescription className="text-sm text-gray-600 dark:text-gray-300">Stay updated with latest community news and events</CardDescription>
                   </CardHeader>
-                  <CardContent className="p-6 space-y-4">
+                  <CardContent className="p-6">
+                    {announcements.length === 0 ? (
+                      <div className="text-center py-12">
+                        <Bell className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+                        <p className="text-gray-500 dark:text-gray-400 text-sm">No announcements available at this time.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
                     {announcements.map((announcement) => (
-                      <Dialog key={announcement.id}>
+                          <Dialog 
+                            key={announcement.id}
+                            open={openAnnouncementDialog === announcement.id}
+                            onOpenChange={(open) => {
+                              if (open) {
+                                setOpenAnnouncementDialog(announcement.id);
+                                setSelectedAnnouncement(announcement);
+                                fetchAnnouncementQuestions(announcement.id);
+                              } else {
+                                setOpenAnnouncementDialog(null);
+                                setSelectedAnnouncement(null);
+                                setAnnouncementQuestions([]);
+                                setNewQuestion("");
+                              }
+                            }}
+                          >
                         <DialogTrigger asChild>
                           <motion.div
-                            whileHover={{ y: -2 }}
-                            className="p-5 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:shadow-lg transition-all duration-300 bg-white dark:bg-gray-800 cursor-pointer group hover:border-[#003153]/40"
-                          >
-                            <div className="flex items-start justify-between mb-3">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-md">
-                                  <Bell className="h-5 w-5 text-white" />
+                                whileHover={{ y: -2, scale: 1.01 }}
+                                className="p-5 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-md transition-all duration-200 bg-gradient-to-r from-white to-gray-50/50 dark:from-gray-800 dark:to-gray-800/50 cursor-pointer group"
+                              >
+                                <div className="flex items-start gap-4">
+                                  {/* Icon */}
+                                  <div className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm ${
+                                    announcement.type?.toLowerCase() === 'event' ? 'bg-purple-100 dark:bg-purple-900/30' :
+                                    announcement.type?.toLowerCase() === 'alert' ? 'bg-red-100 dark:bg-red-900/30' :
+                                    announcement.type?.toLowerCase() === 'meeting' ? 'bg-blue-100 dark:bg-blue-900/30' :
+                                    announcement.type?.toLowerCase() === 'policy' ? 'bg-amber-100 dark:bg-amber-900/30' :
+                                    'bg-gray-100 dark:bg-gray-800'
+                                  }`}>
+                                    <Bell className={`h-6 w-6 ${
+                                      announcement.type?.toLowerCase() === 'event' ? 'text-purple-600 dark:text-purple-400' :
+                                      announcement.type?.toLowerCase() === 'alert' ? 'text-red-600 dark:text-red-400' :
+                                      announcement.type?.toLowerCase() === 'meeting' ? 'text-blue-600 dark:text-blue-400' :
+                                      announcement.type?.toLowerCase() === 'policy' ? 'text-amber-600 dark:text-amber-400' :
+                                      'text-gray-600 dark:text-gray-400'
+                                    }`} />
                                 </div>
-                                <h4 className="font-bold text-base text-gray-900 dark:text-white leading-tight">{announcement.title}</h4>
-                              </div>
-                              <Badge className={`${
-                                announcement.type === 'Event' ? 'bg-purple-100 text-purple-700' :
-                                announcement.type === 'Alert' ? 'bg-red-100 text-red-700' :
-                                'bg-blue-100 text-blue-700'
-                              } text-xs font-semibold px-3 py-1`}>
+                                  
+                                  {/* Content */}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-start justify-between gap-3 mb-2">
+                                      <h4 className="font-semibold text-base text-gray-900 dark:text-white leading-snug group-hover:text-[#003153] dark:group-hover:text-blue-400 transition-colors">
+                                        {announcement.title}
+                                      </h4>
+                                      <Badge className={`flex-shrink-0 text-xs font-medium px-2.5 py-1 ${
+                                        announcement.type?.toLowerCase() === 'event' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
+                                        announcement.type?.toLowerCase() === 'alert' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                                        announcement.type?.toLowerCase() === 'meeting' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                        announcement.type?.toLowerCase() === 'policy' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                                        'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
+                                      }`}>
                                 {announcement.type}
                               </Badge>
                             </div>
-                            <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 line-clamp-2 leading-relaxed">{announcement.description}</p>
-                            <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-600">
-                              <span className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                                <Calendar className="h-4 w-4 mr-2 text-[#003153]" />
+                                    
+                                    {announcement.description && (
+                                      <p className="text-sm text-gray-600 dark:text-gray-300 mb-3 line-clamp-2 leading-relaxed">
+                                        {announcement.description}
+                                      </p>
+                                    )}
+                                    
+                                    <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                                      <span className="flex items-center gap-1.5">
+                                        <Calendar className="h-3.5 w-3.5" />
                                 {announcement.date}
                               </span>
-                              <Button size="sm" variant="ghost" className="text-xs hover:bg-[#003153]/10 hover:text-[#003153] opacity-0 group-hover:opacity-100 transition-all">
+                                      {announcement.priority && (
+                                        <span className={`flex items-center gap-1.5 px-2 py-0.5 rounded ${
+                                          announcement.priority?.toLowerCase() === 'urgent' ? 'bg-red-600 text-white dark:bg-red-700 dark:text-white' :
+                                          announcement.priority?.toLowerCase() === 'high' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
+                                          announcement.priority?.toLowerCase() === 'medium' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                          announcement.priority?.toLowerCase() === 'low' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                                          'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+                                        }`}>
+                                          <AlertCircle className="h-3 w-3" />
+                                          {announcement.priority.charAt(0).toUpperCase() + announcement.priority.slice(1)}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Read More Button */}
+                                  <Button 
+                                    size="sm" 
+                                    variant="ghost" 
+                                    className="flex-shrink-0 text-xs hover:bg-[#003153]/10 hover:text-[#003153] dark:hover:bg-blue-900/20 dark:hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-all"
+                                  >
                                 Read More
                                 <ArrowRight className="h-3 w-3 ml-1" />
                               </Button>
                             </div>
                           </motion.div>
                         </DialogTrigger>
-                        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                          <DialogHeader>
-                            <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">
+                        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                          <DialogHeader className="pb-4 border-b border-gray-200 dark:border-gray-700">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <DialogTitle className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
                               {announcement.title}
                             </DialogTitle>
-                            <DialogDescription className="text-gray-600 dark:text-gray-300">
-                              Community Announcement
-                            </DialogDescription>
+                                <div className="flex items-center gap-3 flex-wrap mb-3">
+                                  <Badge className={`text-xs font-medium px-2.5 py-1 ${
+                                    announcement.type?.toLowerCase() === 'event' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
+                                    announcement.type?.toLowerCase() === 'alert' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                                    announcement.type?.toLowerCase() === 'meeting' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                    announcement.type?.toLowerCase() === 'policy' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                                    'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
+                                  }`}>
+                                    {announcement.type}
+                                  </Badge>
+                                  {announcement.priority && (
+                                    <Badge className={`text-xs font-medium px-2.5 py-1 ${
+                                      announcement.priority?.toLowerCase() === 'urgent' ? 'bg-red-600 text-white dark:bg-red-700 dark:text-white' :
+                                      announcement.priority?.toLowerCase() === 'high' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
+                                      announcement.priority?.toLowerCase() === 'medium' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                      announcement.priority?.toLowerCase() === 'low' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                                      'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+                                    }`}>
+                                      {announcement.priority.charAt(0).toUpperCase() + announcement.priority.slice(1)} Priority
+                                    </Badge>
+                                  )}
+                                  {announcement.status && (
+                                    <Badge className={`text-xs font-medium px-2.5 py-1 ${
+                                      announcement.status === 'published' ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400' :
+                                      'bg-gray-50 text-gray-600 dark:bg-gray-900/20 dark:text-gray-400'
+                                    }`}>
+                                      {announcement.status.charAt(0).toUpperCase() + announcement.status.slice(1)}
+                                    </Badge>
+                                  )}
+                                </div>
+                                
+                                {/* Metadata Row */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+                                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                                    <Calendar className="h-4 w-4 text-[#003153]" />
+                                    <span className="font-medium">Published:</span>
+                                    <span>{announcement.publishDate || announcement.date}</span>
+                                  </div>
+                                  {announcement.expiryDate && (
+                                    <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                                      <Clock className="h-4 w-4 text-amber-600" />
+                                      <span className="font-medium">Expires:</span>
+                                      <span>{announcement.expiryDate}</span>
+                                    </div>
+                                  )}
+                                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                                    <Eye className="h-4 w-4 text-[#003153]" />
+                                    <span className="font-medium">Views:</span>
+                                    <span>{announcement.views || 0}</span>
+                                  </div>
+                                  {announcement.lastUpdated && announcement.lastUpdated !== announcement.date && (
+                                    <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                                      <Clock className="h-4 w-4 text-gray-500" />
+                                      <span className="font-medium">Updated:</span>
+                                      <span>{announcement.lastUpdated}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
                           </DialogHeader>
-                          <div className="space-y-6">
-                            {/* Announcement Details */}
-                            <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                              <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Description</h4>
-                              <p className="text-gray-600 dark:text-gray-300 leading-relaxed">{announcement.description}</p>
+                          <div className="space-y-6 pt-4">
+                            {/* Announcement Content */}
+                            <div className="prose prose-sm max-w-none dark:prose-invert">
+                              <div className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
+                                <h4 className="font-semibold text-gray-900 dark:text-white mb-3 text-base">Full Announcement</h4>
+                                <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                                  {announcement.content || announcement.description || 'No content available.'}
+                                </p>
+                              </div>
                             </div>
 
-                            {/* Additional Details */}
-                            <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                              <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Important Information</h4>
-                              <p className="text-sm text-gray-600 dark:text-gray-300">
-                                This announcement was posted by the community administration. 
-                                For more information or questions, please contact the relevant department.
-                              </p>
+                            {/* Additional Information */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {/* Department & Author */}
+                              <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                                <h4 className="font-semibold text-gray-900 dark:text-white mb-3 text-sm flex items-center gap-2">
+                                  <Building2 className="h-4 w-4 text-[#003153]" />
+                                  Department Information
+                                </h4>
+                                <div className="space-y-2 text-sm">
+                                  <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                                    <Building2 className="h-3.5 w-3.5 text-gray-500" />
+                                    <span className="font-medium">Department:</span>
+                                    <span>{announcement.department}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                                    <User className="h-3.5 w-3.5 text-gray-500" />
+                                    <span className="font-medium">Posted by:</span>
+                                    <span>{announcement.author}</span>
+                                  </div>
+                                  {announcement.town_name && (
+                                    <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                                      <MapPin className="h-3.5 w-3.5 text-gray-500" />
+                                      <span className="font-medium">Town:</span>
+                                      <span>{announcement.town_name}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Tags */}
+                              {announcement.tags && announcement.tags.length > 0 && (
+                                <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg border border-amber-200 dark:border-amber-800">
+                                  <h4 className="font-semibold text-gray-900 dark:text-white mb-3 text-sm flex items-center gap-2">
+                                    <Star className="h-4 w-4 text-amber-600" />
+                                    Tags
+                                  </h4>
+                                  <div className="flex flex-wrap gap-2">
+                                    {announcement.tags.map((tag: string, index: number) => (
+                                      <Badge 
+                                        key={index}
+                                        className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-xs px-2.5 py-1"
+                                      >
+                                        {tag}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Questions Section */}
+                            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                              <h4 className="font-semibold text-gray-900 dark:text-white mb-4 text-base flex items-center gap-2">
+                                <MessageSquare className="h-4 w-4 text-[#003153]" />
+                                Questions & Answers ({announcementQuestions.length})
+                              </h4>
+                              
+                              {isLoadingQuestions ? (
+                                <div className="text-center py-4 text-gray-500 dark:text-gray-400 text-sm">
+                                  Loading questions...
+                                </div>
+                              ) : announcementQuestions.length === 0 ? (
+                                <div className="text-center py-4 text-gray-500 dark:text-gray-400 text-sm">
+                                  No questions yet. Be the first to ask!
+                                </div>
+                              ) : (
+                                <div className="space-y-6 mb-4">
+                                  {announcementQuestions.map((q: any) => (
+                                    <div key={q.id} className="space-y-4">
+                                      {/* Question Thread */}
+                                      <div className="relative">
+                                        {/* Question */}
+                                        <div className="group relative bg-gradient-to-r from-white to-blue-50/30 dark:from-gray-800 dark:to-blue-900/10 border-l-4 border-blue-500 rounded-r-xl p-5 shadow-md hover:shadow-lg transition-all duration-200">
+                                          <div className="absolute top-0 right-0 w-20 h-20 bg-blue-500/5 dark:bg-blue-400/5 rounded-bl-full"></div>
+                                          <div className="relative flex items-start gap-4">
+                                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 dark:from-blue-500 dark:to-blue-700 flex items-center justify-center flex-shrink-0 shadow-md ring-2 ring-blue-100 dark:ring-blue-900/50">
+                                              <User className="h-5 w-5 text-white" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                                <span className="text-sm font-bold text-gray-900 dark:text-white">
+                                                  {q.citizen_name}
+                                                </span>
+                                                <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                                                  asked
+                                                </span>
+                                                <span className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1">
+                                                  <Clock className="h-3 w-3" />
+                                                  {q.created_at}
+                                                </span>
+                                                {q.is_answered && (
+                                                  <Badge className="bg-gradient-to-r from-green-500 to-green-600 text-white border-0 text-xs px-2.5 py-1 ml-auto shadow-sm">
+                                                    <CheckCircle className="h-3 w-3 mr-1" />
+                                                    Answered
+                                                  </Badge>
+                                                )}
+                                              </div>
+                                              <div className="bg-white/60 dark:bg-gray-900/40 rounded-lg p-3 border border-blue-100 dark:border-blue-900/30">
+                                                <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed font-medium">
+                                                  {q.question}
+                                                </p>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+
+                                        {/* Answer (Threaded Reply) */}
+                                        {q.is_answered && q.answer && (
+                                          <div className="ml-6 mt-4 relative">
+                                            {/* Thread connector line with curve */}
+                                            <div className="absolute left-0 top-0 w-6 h-6 border-l-2 border-b-2 border-green-300 dark:border-green-700 rounded-bl-lg -ml-6"></div>
+                                            <div className="absolute left-0 top-6 bottom-0 w-0.5 bg-gradient-to-b from-green-300 to-green-200 dark:from-green-700 dark:to-green-600 -ml-6"></div>
+                                            
+                                            <div className="group relative bg-gradient-to-r from-green-50 to-emerald-50/50 dark:from-green-900/20 dark:to-emerald-900/10 border-l-4 border-green-500 rounded-r-xl p-5 shadow-md hover:shadow-lg transition-all duration-200">
+                                              <div className="absolute top-0 right-0 w-20 h-20 bg-green-500/5 dark:bg-green-400/5 rounded-bl-full"></div>
+                                              <div className="relative flex items-start gap-4">
+                                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 dark:from-green-600 dark:to-emerald-700 flex items-center justify-center flex-shrink-0 shadow-md ring-2 ring-green-100 dark:ring-green-900/50">
+                                                  <Building2 className="h-5 w-5 text-white" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                                    <span className="text-sm font-bold text-gray-900 dark:text-white">
+                                                      {q.answered_by || 'Government Official'}
+                                                    </span>
+                                                    <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                                                      replied
+                                                    </span>
+                                                    {q.answered_at && (
+                                                      <span className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1">
+                                                        <Clock className="h-3 w-3" />
+                                                        {q.answered_at}
+                                                      </span>
+                                                    )}
+                                                  </div>
+                                                  <div className="bg-white/80 dark:bg-gray-900/50 rounded-lg p-4 border border-green-100 dark:border-green-900/30 shadow-sm">
+                                                    <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">
+                                                      {q.answer}
+                                                    </p>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Ask Question Form */}
+                              <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                                <h5 className="font-semibold text-gray-900 dark:text-white mb-3 text-sm">
+                                  Ask a Question
+                                </h5>
+                                <Textarea
+                                  placeholder="Type your question here..."
+                                  value={newQuestion}
+                                  onChange={(e) => setNewQuestion(e.target.value)}
+                                  className="mb-3 min-h-[80px] bg-white dark:bg-gray-800"
+                                />
+                                <Button
+                                  onClick={handleSubmitQuestion}
+                                  disabled={!newQuestion.trim() || isSubmittingQuestion}
+                                  className="bg-[#003153] hover:bg-[#003153]/90 text-white w-full sm:w-auto"
+                                >
+                                  {isSubmittingQuestion ? 'Submitting...' : 'Submit Question'}
+                                </Button>
+                              </div>
                             </div>
 
                             {/* Action Buttons */}
                             <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-                              <Button className="bg-[#003153] hover:bg-[#003153]/90">
-                                <MessageSquare className="h-4 w-4 mr-2" />
-                                Ask Question
-                              </Button>
-                              <Button variant="outline">
+                              <Button variant="outline" className="border-2 hover:bg-gray-50 dark:hover:bg-gray-800">
                                 <Bell className="h-4 w-4 mr-2" />
                                 Get Notifications
                               </Button>
@@ -968,6 +1246,8 @@ export default function CitizenPortal() {
                         </DialogContent>
                       </Dialog>
                     ))}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </motion.div>

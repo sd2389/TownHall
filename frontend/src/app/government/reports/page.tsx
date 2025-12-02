@@ -77,8 +77,15 @@ export default function GovernmentReports() {
   const [filterType, setFilterType] = useState<'all' | 'complaints' | 'applications' | 'announcements' | 'analytics'>('all');
   const [filterPeriod, setFilterPeriod] = useState<'all' | 'daily' | 'weekly' | 'monthly' | 'yearly'>('all');
   const [sortBy, setSortBy] = useState<'date' | 'name' | 'type'>('date');
+  const [reports, setReports] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const reports = [
+  // Reports will be fetched from API when that feature is implemented
+  useEffect(() => {
+    // TODO: Implement reports API
+    setIsLoading(false);
+    setReports([]);
+  }, []);
     {
       id: 1,
       title: "Monthly Complaints Report",
@@ -233,10 +240,6 @@ export default function GovernmentReports() {
         "Maintain current service levels",
         "Prepare for increased weather-related issues",
         "Continue staff training programs"
-      ]
-    }
-  ];
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case "completed":

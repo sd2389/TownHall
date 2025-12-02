@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -86,6 +86,35 @@ export default function SignupPage() {
   
   const [availableTowns, setAvailableTowns] = useState<any[]>([]);
   const [isLoadingTowns, setIsLoadingTowns] = useState(false);
+  const [availableDepartments, setAvailableDepartments] = useState<any[]>([]);
+  const [isLoadingDepartments, setIsLoadingDepartments] = useState(false);
+  const [availablePositions, setAvailablePositions] = useState<any[]>([]);
+  const [isLoadingPositions, setIsLoadingPositions] = useState(false);
+  const [isDataLoaded, setIsDataLoaded] = useState(false); // Track if data has been loaded from localStorage
+  const isDataLoadedRef = useRef(false); // Use ref for immediate checks
+  
+  // Use refs to store latest values for localStorage saving
+  const formDataRef = useRef(formData);
+  const userTypeRef = useRef(userType);
+  const currentStepRef = useRef(currentStep);
+  const selectedIdTypeRef = useRef(selectedIdType);
+  
+  // Update refs when state changes
+  useEffect(() => {
+    formDataRef.current = formData;
+  }, [formData]);
+  
+  useEffect(() => {
+    userTypeRef.current = userType;
+  }, [userType]);
+  
+  useEffect(() => {
+    currentStepRef.current = currentStep;
+  }, [currentStep]);
+  
+  useEffect(() => {
+    selectedIdTypeRef.current = selectedIdType;
+  }, [selectedIdType]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -116,60 +145,387 @@ export default function SignupPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => {
+      const updated = {
+        ...prev,
+        [name]: value
+      };
+      // Save to localStorage after state update (only if data is loaded)
+      if (isDataLoaded) {
+        setTimeout(() => saveToLocalStorage(), 0);
+      }
+      return updated;
+    });
   };
 
   const handleCheckboxChange = (checked: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      agreeToTerms: checked
-    }));
+    setFormData(prev => {
+      const updated = {
+        ...prev,
+        agreeToTerms: checked
+      };
+      // Save to localStorage after state update (only if data is loaded)
+      if (isDataLoaded) {
+        setTimeout(() => saveToLocalStorage(), 0);
+      }
+      return updated;
+    });
   };
 
   const handleNext = () => {
     if (currentStep < 4) {
       setCurrentStep(currentStep + 1);
+      // Save to localStorage after state update (only if data is loaded)
+      if (isDataLoaded) {
+        setTimeout(() => saveToLocalStorage(), 0);
+      }
     }
   };
 
   const handlePrevious = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
+      // Save to localStorage after state update (only if data is loaded)
+      if (isDataLoaded) {
+        setTimeout(() => saveToLocalStorage(), 0);
+      }
     }
   };
 
   const { signup, isLoading } = useAuth();
   const router = useRouter();
 
+  // localStorage key
+  const STORAGE_KEY = 'townhall_signup_data';
+  const STORAGE_TIMESTAMP_KEY = 'townhall_signup_timestamp';
+  const STORAGE_EXPIRY_HOURS = 1; // 1 hour expiry
+
+  // Check if localStorage data is expired
+  const isStorageExpired = (): boolean => {
+    if (typeof window === 'undefined') return true;
+    const timestamp = localStorage.getItem(STORAGE_TIMESTAMP_KEY);
+    if (!timestamp) return true;
+    
+    const savedTime = parseInt(timestamp, 10);
+    const currentTime = Date.now();
+    const hoursElapsed = (currentTime - savedTime) / (1000 * 60 * 60);
+    
+    return hoursElapsed >= STORAGE_EXPIRY_HOURS;
+  };
+
+  // Save form data to localStorage
+  const saveToLocalStorage = () => {
+    if (typeof window === 'undefined') return;
+    
+    // Don't save if data hasn't been loaded yet (to prevent overwriting with empty data)
+    // Use ref for immediate check to avoid race conditions
+    if (!isDataLoadedRef.current) {
+      console.log('Skipping save - data not loaded yet');
+      return;
+    }
+    
+    try {
+      // Use refs to get the latest values
+      const dataToSave = {
+        formData: formDataRef.current,
+        userType: userTypeRef.current,
+        currentStep: currentStepRef.current,
+        selectedIdType: selectedIdTypeRef.current,
+      };
+      
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+      localStorage.setItem(STORAGE_TIMESTAMP_KEY, Date.now().toString());
+      console.log('Saved to localStorage:', { 
+        userType: userTypeRef.current, 
+        currentStep: currentStepRef.current, 
+        hasFormData: !!formDataRef.current.email 
+      });
+    } catch (error) {
+      console.error('Error saving to localStorage:', error);
+    }
+  };
+
+  // Load form data from localStorage
+  const loadFromLocalStorage = (): boolean => {
+    if (typeof window === 'undefined') return false;
+    
+    try {
+      // Check if data is expired
+      if (isStorageExpired()) {
+        console.log('localStorage data expired, clearing...');
+        clearLocalStorage();
+        isDataLoadedRef.current = true; // Mark as loaded even if expired
+        setIsDataLoaded(true);
+        return false;
+      }
+
+      const savedData = localStorage.getItem(STORAGE_KEY);
+      if (!savedData) {
+        console.log('No saved data in localStorage');
+        isDataLoadedRef.current = true; // Mark as loaded even if no data
+        setIsDataLoaded(true);
+        return false;
+      }
+
+      const parsed = JSON.parse(savedData);
+      console.log('Loading from localStorage:', { 
+        hasFormData: !!parsed.formData, 
+        userType: parsed.userType, 
+        currentStep: parsed.currentStep 
+      });
+      
+      // Update refs first to ensure they have the latest values
+      if (parsed.formData) {
+        formDataRef.current = parsed.formData;
+        setFormData(parsed.formData); // Replace entirely instead of merging
+      }
+      if (parsed.userType) {
+        userTypeRef.current = parsed.userType;
+        setUserType(parsed.userType);
+      }
+      if (parsed.currentStep) {
+        currentStepRef.current = parsed.currentStep;
+        setCurrentStep(parsed.currentStep);
+      }
+      if (parsed.selectedIdType) {
+        selectedIdTypeRef.current = parsed.selectedIdType;
+        setSelectedIdType(parsed.selectedIdType);
+      }
+      
+      // Mark as loaded AFTER updating state and refs (use ref for immediate effect)
+      isDataLoadedRef.current = true;
+      setIsDataLoaded(true);
+      
+      return true;
+    } catch (error) {
+      console.error('Error loading from localStorage:', error);
+      clearLocalStorage();
+      isDataLoadedRef.current = true; // Mark as loaded even on error
+      setIsDataLoaded(true);
+      return false;
+    }
+  };
+
+  // Clear localStorage
+  const clearLocalStorage = () => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(STORAGE_TIMESTAMP_KEY);
+    } catch (error) {
+      console.error('Error clearing localStorage:', error);
+    }
+  };
+
   // Fix hydration mismatch by ensuring client-side rendering
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // Load saved data after mount (with delay to avoid hydration mismatch)
+  useEffect(() => {
+    if (isMounted) {
+      // Use setTimeout to ensure this runs after initial render
+      const timer = setTimeout(() => {
+        loadFromLocalStorage();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isMounted]);
   
+  // Save to localStorage when userType changes (only after data is loaded)
+  useEffect(() => {
+    if (!isMounted || !isDataLoaded || !userType) return;
+    saveToLocalStorage();
+  }, [userType, isMounted, isDataLoaded]);
+
+  // Save to localStorage when selectedIdType changes (only after data is loaded)
+  useEffect(() => {
+    if (!isMounted || !isDataLoaded || !selectedIdType) return;
+    saveToLocalStorage();
+  }, [selectedIdType, isMounted, isDataLoaded]);
+
+  // Save to localStorage when formData changes (debounced, only after data is loaded)
+  useEffect(() => {
+    if (!isMounted || !isDataLoaded) return;
+    
+    const timeoutId = setTimeout(() => {
+      saveToLocalStorage();
+    }, 500); // Debounce by 500ms
+    
+    return () => clearTimeout(timeoutId);
+  }, [formData, isMounted, isDataLoaded]);
+
+  // Save to localStorage when currentStep changes (only after data is loaded)
+  useEffect(() => {
+    if (!isMounted || !isDataLoaded) return;
+    saveToLocalStorage();
+  }, [currentStep, isMounted, isDataLoaded]);
+
+  // Periodic check to clear expired localStorage data (every 5 minutes)
+  useEffect(() => {
+    if (!isMounted) return;
+
+    const checkExpiry = () => {
+      if (isStorageExpired()) {
+        clearLocalStorage();
+      }
+    };
+
+    // Check immediately
+    checkExpiry();
+
+    // Check every 5 minutes
+    const intervalId = setInterval(checkExpiry, 5 * 60 * 1000);
+
+    return () => clearInterval(intervalId);
+  }, [isMounted]);
+
   // Fetch active towns
   useEffect(() => {
+    if (!isMounted || !userType) return;
+
     const fetchTowns = async () => {
       setIsLoadingTowns(true);
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/towns/active/`);
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+        const url = `${apiUrl}/towns/active/`;
+        console.log('Fetching towns from:', url); // Debug log
+        
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          mode: 'cors',
+        });
+        
+        console.log('Towns API response status:', response.status); // Debug log
+        
         if (response.ok) {
           const towns = await response.json();
-          setAvailableTowns(towns);
+          console.log('Fetched towns successfully:', towns); // Debug log
+          
+          if (Array.isArray(towns) && towns.length > 0) {
+            setAvailableTowns(towns);
+            console.log(`Loaded ${towns.length} towns into dropdown`); // Debug log
+          } else {
+            console.warn('Towns array is empty or invalid:', towns);
+            setAvailableTowns([]);
+          }
+        } else {
+          const errorText = await response.text();
+          console.error('Failed to fetch towns:', response.status, response.statusText, errorText);
+          setAvailableTowns([]);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching towns:', error);
+        console.error('Error details:', {
+          message: error?.message,
+          name: error?.name,
+          stack: error?.stack
+        });
+        setAvailableTowns([]);
       } finally {
         setIsLoadingTowns(false);
       }
     };
     
-    if (isMounted && userType) {
+    // Add a small delay to ensure backend is ready
+    const timer = setTimeout(() => {
       fetchTowns();
-    }
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, [isMounted, userType]);
+
+  // Fetch departments for government users
+  useEffect(() => {
+    if (!isMounted || userType !== 'government') return;
+
+    const fetchDepartments = async () => {
+      setIsLoadingDepartments(true);
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+        const response = await fetch(`${apiUrl}/government/departments/`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          mode: 'cors',
+        });
+        
+        if (response.ok) {
+          const departments = await response.json();
+          console.log('Fetched departments:', departments);
+          setAvailableDepartments(Array.isArray(departments) ? departments : []);
+        } else {
+          console.warn('Failed to fetch departments:', response.status, response.statusText);
+          setAvailableDepartments([]);
+        }
+      } catch (error) {
+        console.warn('Error fetching departments (backend may not be running):', error);
+        setAvailableDepartments([]);
+      } finally {
+        setIsLoadingDepartments(false);
+      }
+    };
+    
+    const timer = setTimeout(() => {
+      fetchDepartments();
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [isMounted, userType]);
+
+  // Fetch positions when department is selected
+  useEffect(() => {
+    if (!isMounted || userType !== 'government' || !formData.department) {
+      setAvailablePositions([]);
+      return;
+    }
+
+    const fetchPositions = async () => {
+      // Find the department ID from the department name
+      const selectedDept = availableDepartments.find(dept => dept.name === formData.department);
+      if (!selectedDept) {
+        setAvailablePositions([]);
+        return;
+      }
+
+      setIsLoadingPositions(true);
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+        const response = await fetch(`${apiUrl}/government/positions/?department_id=${selectedDept.id}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          mode: 'cors',
+        });
+        
+        if (response.ok) {
+          const positions = await response.json();
+          console.log('Fetched positions:', positions);
+          setAvailablePositions(Array.isArray(positions) ? positions : []);
+        } else {
+          console.warn('Failed to fetch positions:', response.status, response.statusText);
+          setAvailablePositions([]);
+        }
+      } catch (error) {
+        console.warn('Error fetching positions:', error);
+        setAvailablePositions([]);
+      } finally {
+        setIsLoadingPositions(false);
+      }
+    };
+    
+    const timer = setTimeout(() => {
+      fetchPositions();
+    }, 300); // Debounce to avoid too many calls
+    
+    return () => clearTimeout(timer);
+  }, [isMounted, userType, formData.department, availableDepartments]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -185,47 +541,101 @@ export default function SignupPage() {
       return;
     }
 
+    // Validate required fields before submission
+    if (!formData.townId) {
+      setError("Please select a town");
+      return;
+    }
+
+    const townIdInt = parseInt(formData.townId, 10);
+    if (isNaN(townIdInt)) {
+      setError("Invalid town selected. Please select a town again.");
+      return;
+    }
+
+    if (userType === 'government') {
+      if (!formData.employeeId) {
+        setError("Employee ID is required for government accounts");
+        return;
+      }
+      if (!formData.department) {
+        setError("Please select a department");
+        return;
+      }
+      if (!formData.position) {
+        setError("Please select a position");
+        return;
+      }
+    }
+
+    if (userType === 'business' && !formData.businessName) {
+      setError("Business name is required");
+      return;
+    }
+
     const signupData = {
       email: formData.email,
       password: formData.password,
       firstName: formData.firstName,
       lastName: formData.lastName,
       userType: userType,
-      phone: formData.phone,
-      townId: formData.townId,
+      phone: formData.phone || '',
+      townId: townIdInt, // Ensure townId is an integer
       // Structured address fields
-      streetAddress: formData.streetAddress,
-      aptSuite: formData.aptSuite,
-      city: formData.city,
-      state: formData.state,
-      zipCode: formData.zipCode,
+      streetAddress: formData.streetAddress || '',
+      aptSuite: formData.aptSuite || '',
+      city: formData.city || '',
+      state: formData.state || '',
+      zipCode: formData.zipCode || '',
       // Citizen specific
-      address: formData.address,
-      dateOfBirth: formData.dateOfBirth,
+      address: formData.address || '',
+      dateOfBirth: formData.dateOfBirth || null,
       // Business specific
-      businessName: formData.businessName,
-      businessType: formData.businessType,
-      businessAddress: formData.businessAddress,
-      businessRegistrationNumber: formData.businessRegistrationNumber,
-      website: formData.website,
+      businessName: formData.businessName || '',
+      businessType: formData.businessType || '',
+      businessAddress: formData.businessAddress || '',
+      businessRegistrationNumber: formData.businessRegistrationNumber || '',
+      website: formData.website || '',
       // Government specific
-      employeeId: formData.employeeId,
-      department: formData.department,
-      position: formData.position,
-      officeAddress: formData.officeAddress,
+      employeeId: formData.employeeId || '',
+      department: formData.department || '',
+      position: formData.position || '',
+      officeAddress: formData.officeAddress || '',
     };
 
-    const success = await signup(signupData);
-    if (success) {
-      // Redirect to appropriate portal based on user type
-      const redirectPaths = {
-        citizen: '/citizen',
-        business: '/business',
-        government: '/government'
-      };
-      router.push(redirectPaths[userType as keyof typeof redirectPaths] || '/');
-    } else {
-      setError("Failed to create account. Please try again.");
+    console.log('Submitting signup data:', { ...signupData, password: '***' }); // Debug log
+
+    try {
+      const result: { success: boolean; error?: string; details?: any } = await signup(signupData);
+      if (result.success) {
+        // Clear localStorage on successful signup
+        clearLocalStorage();
+        
+        // Redirect to appropriate portal based on user type
+        const redirectPaths = {
+          citizen: '/citizen',
+          business: '/business',
+          government: '/government'
+        };
+        router.push(redirectPaths[userType as keyof typeof redirectPaths] || '/');
+      } else {
+        // Format validation errors for display
+        if (result.details) {
+          const errorMessages = Object.entries(result.details)
+            .map(([field, errors]: [string, any]) => {
+              const errorList = Array.isArray(errors) ? errors : [errors];
+              const fieldName = field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+              return `${fieldName}: ${errorList.join(', ')}`;
+            })
+            .join('\n');
+          setError(errorMessages || "Please check all required fields and try again.");
+        } else {
+          setError(result.error || "Failed to create account. Please check all required fields and try again.");
+        }
+      }
+    } catch (err: any) {
+      console.error('Signup error:', err);
+      setError(err.message || "Failed to create account. Please try again.");
     }
   };
 
@@ -264,7 +674,12 @@ export default function SignupPage() {
             <div className="space-y-2">
               <Label htmlFor="userType">Account Type *</Label>
               {isMounted ? (
-                <Select value={userType} onValueChange={setUserType}>
+                <Select value={userType} onValueChange={(value) => {
+                  setUserType(value);
+                  if (isDataLoaded) {
+                    setTimeout(() => saveToLocalStorage(), 0);
+                  }
+                }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select your account type" />
                   </SelectTrigger>
@@ -306,10 +721,11 @@ export default function SignupPage() {
                     id="firstName"
                     name="firstName"
                     placeholder="First name"
-                    value={formData.firstName}
+                    value={formData.firstName || ''}
                     onChange={handleInputChange}
                     className="pl-10"
                     required
+                    suppressHydrationWarning
                   />
                 </div>
               </div>
@@ -321,10 +737,11 @@ export default function SignupPage() {
                     id="lastName"
                     name="lastName"
                     placeholder="Last name"
-                    value={formData.lastName}
+                    value={formData.lastName || ''}
                     onChange={handleInputChange}
                     className="pl-10"
                     required
+                    suppressHydrationWarning
                   />
                 </div>
               </div>
@@ -339,10 +756,11 @@ export default function SignupPage() {
                   name="email"
                   type="email"
                   placeholder="Enter your email"
-                  value={formData.email}
+                  value={formData.email || ''}
                   onChange={handleInputChange}
                   className="pl-10"
                   required
+                  suppressHydrationWarning
                 />
               </div>
             </div>
@@ -356,9 +774,10 @@ export default function SignupPage() {
                   name="phone"
                   type="tel"
                   placeholder="Enter your phone number"
-                  value={formData.phone}
+                  value={formData.phone || ''}
                   onChange={handleInputChange}
                   className="pl-10"
+                  suppressHydrationWarning
                 />
               </div>
             </div>
@@ -369,10 +788,19 @@ export default function SignupPage() {
                 <Label htmlFor="townId">Select Your Town *</Label>
                 {isLoadingTowns ? (
                   <div className="text-sm text-muted-foreground">Loading towns...</div>
+                ) : availableTowns.length === 0 ? (
+                  <div className="text-sm text-amber-600 dark:text-amber-400">
+                    No towns available. Please ensure the backend is running and towns are configured.
+                  </div>
                 ) : (
                   <Select 
-                    value={formData.townId} 
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, townId: value }))}
+                    value={formData.townId || ''} 
+                  onValueChange={(value) => {
+                    setFormData(prev => ({ ...prev, townId: value }));
+                    if (isDataLoaded) {
+                      setTimeout(() => saveToLocalStorage(), 0);
+                    }
+                  }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select your town" />
@@ -693,36 +1121,103 @@ export default function SignupPage() {
               <>
                 <div className="space-y-2">
                   <Label htmlFor="employeeId">Employee ID *</Label>
-                  <Input
-                    id="employeeId"
-                    name="employeeId"
-                    placeholder="Enter your employee ID"
-                    value={formData.employeeId}
-                    onChange={handleInputChange}
-                    required
-                  />
+                  <div className="relative">
+                    <IdCard className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="employeeId"
+                      name="employeeId"
+                      placeholder="Enter your employee ID"
+                      value={formData.employeeId || ''}
+                      onChange={handleInputChange}
+                      className="pl-10"
+                      required
+                      suppressHydrationWarning
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Your unique employee identification number
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="department">Department *</Label>
-                  <Input
-                    id="department"
-                    name="department"
-                    placeholder="Enter your department"
-                    value={formData.department}
-                    onChange={handleInputChange}
-                    required
-                  />
+                  {isLoadingDepartments ? (
+                    <div className="text-sm text-muted-foreground flex items-center gap-2">
+                      <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full"></div>
+                      Loading departments...
+                    </div>
+                  ) : availableDepartments.length === 0 ? (
+                    <div className="text-sm text-amber-600 dark:text-amber-400 p-3 border border-amber-200 dark:border-amber-800 rounded-md bg-amber-50 dark:bg-amber-950">
+                      No departments available. Please contact an administrator to create departments.
+                    </div>
+                  ) : (
+                    <Select 
+                      value={formData.department || ''} 
+                      onValueChange={(value) => {
+                        setFormData(prev => ({ ...prev, department: value, position: '' })); // Clear position when department changes
+                        if (isDataLoaded) {
+                          setTimeout(() => saveToLocalStorage(), 0);
+                        }
+                      }}
+                      required
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select your department" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableDepartments.map((dept) => (
+                          <SelectItem key={dept.id} value={dept.name}>
+                            {dept.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Select the department you work in
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="position">Position *</Label>
-                  <Input
-                    id="position"
-                    name="position"
-                    placeholder="Enter your position"
-                    value={formData.position}
-                    onChange={handleInputChange}
-                    required
-                  />
+                  {!formData.department ? (
+                    <div className="text-sm text-muted-foreground p-3 border border-gray-200 dark:border-gray-800 rounded-md bg-muted/30">
+                      Please select a department first to view available positions
+                    </div>
+                  ) : isLoadingPositions ? (
+                    <div className="text-sm text-muted-foreground flex items-center gap-2">
+                      <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full"></div>
+                      Loading positions...
+                    </div>
+                  ) : availablePositions.length === 0 ? (
+                    <div className="text-sm text-amber-600 dark:text-amber-400 p-3 border border-amber-200 dark:border-amber-800 rounded-md bg-amber-50 dark:bg-amber-950">
+                      No positions available for this department. Please contact an administrator.
+                    </div>
+                  ) : (
+                    <Select 
+                      value={formData.position || ''} 
+                      onValueChange={(value) => {
+                        setFormData(prev => ({ ...prev, position: value }));
+                        if (isDataLoaded) {
+                          setTimeout(() => saveToLocalStorage(), 0);
+                        }
+                      }}
+                      required
+                      disabled={!formData.department}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select your position" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availablePositions.map((pos) => (
+                          <SelectItem key={pos.id} value={pos.name}>
+                            {pos.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Select your job title or position within the department
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="officeAddress">Office Address</Label>
@@ -732,11 +1227,15 @@ export default function SignupPage() {
                       id="officeAddress"
                       name="officeAddress"
                       placeholder="Enter your office address"
-                      value={formData.officeAddress}
+                      value={formData.officeAddress || ''}
                       onChange={handleInputChange}
-                      className="pl-10"
+                      className="pl-10 min-h-[100px]"
+                      suppressHydrationWarning
                     />
                   </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Enter the complete address of your office location
+                  </p>
                 </div>
               </>
             )}
@@ -762,7 +1261,12 @@ export default function SignupPage() {
                       <button
                         key={option.value}
                         type="button"
-                        onClick={() => setSelectedIdType(option.value)}
+                        onClick={() => {
+                          setSelectedIdType(option.value);
+                          if (isDataLoaded) {
+                            setTimeout(() => saveToLocalStorage(), 0);
+                          }
+                        }}
                         className={`flex flex-col items-center p-4 border-2 rounded-lg transition-all ${
                           selectedIdType === option.value
                             ? 'border-purple-600 bg-purple-50'
@@ -1013,7 +1517,7 @@ export default function SignupPage() {
                   ))}
                 </div>
 
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={handleSubmit} suppressHydrationWarning>
                   {renderStepContent()}
 
                   {/* Navigation Buttons */}

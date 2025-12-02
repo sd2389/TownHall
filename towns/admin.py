@@ -4,9 +4,9 @@ from .models import Town, TownChangeRequest
 
 @admin.register(Town)
 class TownAdmin(admin.ModelAdmin):
-    list_display = ('name', 'state', 'is_active', 'created_at')
+    list_display = ('name', 'state', 'approver', 'is_active', 'created_at')
     list_filter = ('is_active', 'state', 'created_at')
-    search_fields = ('name', 'state', 'slug')
+    search_fields = ('name', 'state', 'slug', 'approver__user__email', 'approver__user__first_name', 'approver__user__last_name')
     prepopulated_fields = {'slug': ('name',)}
     ordering = ('name',)
     
@@ -14,11 +14,28 @@ class TownAdmin(admin.ModelAdmin):
         ('Basic Information', {
             'fields': ('name', 'slug', 'state', 'is_active')
         }),
+        ('Town Approver', {
+            'fields': ('approver',),
+            'description': 'Designate a government official who can approve/reject citizens and business owners for this town. Only one approver per town.'
+        }),
         ('Location Details', {
             'fields': ('zip_codes',)
         }),
         ('Emergency Contacts', {
-            'fields': ('emergency_police', 'emergency_fire', 'emergency_medical', 'emergency_non_urgent', 'emergency_dispatch'),
+            'fields': (
+                'emergency_police', 
+                'emergency_fire', 
+                'emergency_medical', 
+                'emergency_non_urgent', 
+                'emergency_dispatch',
+                'emergency_animal_control',
+                'emergency_poison_control',
+                'emergency_utilities',
+                'emergency_public_works',
+                'emergency_mental_health',
+                'emergency_child_protective',
+                'emergency_road_department',
+            ),
             'classes': ('collapse',)
         }),
         ('Timestamps', {

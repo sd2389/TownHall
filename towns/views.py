@@ -45,6 +45,13 @@ def user_town_emergency_contacts(request):
                 'medical': town.emergency_medical,
                 'non_urgent': town.emergency_non_urgent if town.emergency_non_urgent else None,
                 'dispatch': town.emergency_dispatch if town.emergency_dispatch else None,
+                'animal_control': town.emergency_animal_control if town.emergency_animal_control else None,
+                'poison_control': town.emergency_poison_control if town.emergency_poison_control else None,
+                'utilities': town.emergency_utilities if town.emergency_utilities else None,
+                'public_works': town.emergency_public_works if town.emergency_public_works else None,
+                'mental_health': town.emergency_mental_health if town.emergency_mental_health else None,
+                'child_protective': town.emergency_child_protective if town.emergency_child_protective else None,
+                'road_department': town.emergency_road_department if town.emergency_road_department else None,
             }
         }
         

@@ -70,7 +70,7 @@ export default function PortalNavigation({ currentUserType, userName }: PortalNa
       return {
         name: "Government Portal",
         icon: Shield,
-        color: "bg-purple-600", 
+        color: "bg-slate-700", 
         description: "Manage departments and respond to complaints",
         role: "government" as const
       };
@@ -93,8 +93,7 @@ export default function PortalNavigation({ currentUserType, userName }: PortalNa
           return [
             { name: "Complaints", href: "/citizen/complaints", icon: FileText },
             { name: "Services", href: "/citizen/services", icon: ClipboardList },
-            { name: "Notifications", href: "/citizen/notifications", icon: Bell },
-            { name: "File New", href: "/citizen/file-new", icon: AlertCircle }
+            { name: "Notifications", href: "/citizen/notifications", icon: Bell }
           ];
         case "business":
           return [
@@ -156,7 +155,7 @@ export default function PortalNavigation({ currentUserType, userName }: PortalNa
     switch (userRole) {
       case "citizen": return "bg-blue-100 text-blue-800";
       case "business": return "bg-green-100 text-green-800";
-      case "government": return "bg-purple-100 text-purple-800";
+      case "government": return "bg-slate-100 text-slate-800";
       default: return "bg-gray-100 text-gray-800";
     }
   };
@@ -231,7 +230,7 @@ export default function PortalNavigation({ currentUserType, userName }: PortalNa
                   variant="ghost"
                   className="flex items-center space-x-2 h-auto p-2 hover:bg-gray-100 rounded-full"
                 >
-                  <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
+                  <div className="w-8 h-8 bg-slate-700 rounded-full flex items-center justify-center">
                     <span className="text-sm font-medium text-white">
                       {getUserInitials()}
                     </span>
@@ -288,7 +287,7 @@ export default function PortalNavigation({ currentUserType, userName }: PortalNa
                   variant="ghost"
                   className="flex items-center space-x-2 h-auto p-2"
                 >
-                  <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
+                  <div className="w-8 h-8 bg-slate-700 rounded-full flex items-center justify-center">
                     <span className="text-sm font-medium text-white">
                       {getUserInitials()}
                     </span>
