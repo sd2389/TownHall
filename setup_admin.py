@@ -87,14 +87,16 @@ def setup_admin():
             town=secaucus,
             is_approved=True
         )
-        GovernmentOfficial.objects.create(
+        gov_official = GovernmentOfficial.objects.create(
             user=gov_user,
             employee_id='GOV001',
             department='City Administration',
             position='Town Administrator',
             phone_number='+1234567890',
             office_address='1203 Paterson Plank Road, Secaucus, NJ 07094',
-            town=secaucus
+            town=secaucus,
+            can_approve_users=True,  # Grant approval permission by default
+            can_view_users=True  # Grant view permission by default
         )
         print("✓ Government official created:")
         print(f"  Username: gov@secaucus.gov")

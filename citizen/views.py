@@ -7,10 +7,14 @@ from authentication.models import UserProfile
 from django.db.models import Q
 from government.utils import get_user_town, filter_by_town
 from government.models import GovernmentOfficial
+from .file_validator import validate_uploaded_file, sanitize_filename
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 
-@api_view(['GET'])
+@api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def list_complaints_view(request):
     """List complaints filtered by user's town"""
@@ -192,7 +196,7 @@ def create_complaint_view(request):
             estimated_resolution=estimated_resolution,
         )
         
-        # Handle file uploads
+        # Handle file uploads with secure validation
         attachments = []
         if request.FILES:
             # Handle multiple files
@@ -201,30 +205,37 @@ def create_complaint_view(request):
                 files = [request.FILES['file']]
             
             for uploaded_file in files:
-                # Validate file size (max 10MB)
-                if uploaded_file.size > 10 * 1024 * 1024:
-                    continue  # Skip files larger than 10MB
-                
-                # Get file extension
-                file_name = uploaded_file.name
-                file_ext = os.path.splitext(file_name)[1].lower()
-                file_type = uploaded_file.content_type or file_ext
-                
-                # Create attachment
-                attachment = ComplaintAttachment.objects.create(
-                    complaint=complaint,
-                    file=uploaded_file,
-                    file_name=file_name,
-                    file_type=file_type,
-                    file_size=uploaded_file.size,
-                )
-                attachments.append({
-                    'id': attachment.id,
-                    'file_name': attachment.file_name,
-                    'file_type': attachment.file_type,
-                    'file_size': attachment.file_size,
-                    'file_url': request.build_absolute_uri(attachment.file.url) if attachment.file else None,
-                })
+                try:
+                    # Comprehensive file validation
+                    is_valid, error_message = validate_uploaded_file(uploaded_file)
+                    if not is_valid:
+                        logger.warning(f"File upload rejected: {uploaded_file.name} - {error_message}")
+                        continue  # Skip invalid files
+                    
+                    # Sanitize filename
+                    sanitized_name = sanitize_filename(uploaded_file.name)
+                    
+                    # Get file type
+                    file_type = uploaded_file.content_type or os.path.splitext(sanitized_name)[1].lower()
+                    
+                    # Create attachment with sanitized filename
+                    attachment = ComplaintAttachment.objects.create(
+                        complaint=complaint,
+                        file=uploaded_file,
+                        file_name=sanitized_name,
+                        file_type=file_type,
+                        file_size=uploaded_file.size,
+                    )
+                    attachments.append({
+                        'id': attachment.id,
+                        'file_name': attachment.file_name,
+                        'file_type': attachment.file_type,
+                        'file_size': attachment.file_size,
+                        'file_url': request.build_absolute_uri(attachment.file.url) if attachment.file else None,
+                    })
+                except Exception as e:
+                    logger.error(f"Error processing file upload: {uploaded_file.name} - {str(e)}")
+                    continue  # Skip files that cause errors
         
         return Response({
             'message': 'Complaint created successfully',
@@ -317,7 +328,7 @@ def update_complaint_view(request, complaint_id):
                 complaint=complaint
             ).delete()
         
-        # Handle new file uploads
+        # Handle new file uploads with secure validation
         new_attachments = []
         if request.FILES:
             files = request.FILES.getlist('files') if 'files' in request.FILES else []
@@ -325,30 +336,37 @@ def update_complaint_view(request, complaint_id):
                 files = [request.FILES['file']]
             
             for uploaded_file in files:
-                # Validate file size (max 10MB)
-                if uploaded_file.size > 10 * 1024 * 1024:
-                    continue  # Skip files larger than 10MB
-                
-                # Get file extension
-                file_name = uploaded_file.name
-                file_ext = os.path.splitext(file_name)[1].lower()
-                file_type = uploaded_file.content_type or file_ext
-                
-                # Create attachment
-                attachment = ComplaintAttachment.objects.create(
-                    complaint=complaint,
-                    file=uploaded_file,
-                    file_name=file_name,
-                    file_type=file_type,
-                    file_size=uploaded_file.size,
-                )
-                new_attachments.append({
-                    'id': attachment.id,
-                    'file_name': attachment.file_name,
-                    'file_type': attachment.file_type,
-                    'file_size': attachment.file_size,
-                    'file_url': request.build_absolute_uri(attachment.file.url) if attachment.file else None,
-                })
+                try:
+                    # Comprehensive file validation
+                    is_valid, error_message = validate_uploaded_file(uploaded_file)
+                    if not is_valid:
+                        logger.warning(f"File upload rejected: {uploaded_file.name} - {error_message}")
+                        continue  # Skip invalid files
+                    
+                    # Sanitize filename
+                    sanitized_name = sanitize_filename(uploaded_file.name)
+                    
+                    # Get file type
+                    file_type = uploaded_file.content_type or os.path.splitext(sanitized_name)[1].lower()
+                    
+                    # Create attachment with sanitized filename
+                    attachment = ComplaintAttachment.objects.create(
+                        complaint=complaint,
+                        file=uploaded_file,
+                        file_name=sanitized_name,
+                        file_type=file_type,
+                        file_size=uploaded_file.size,
+                    )
+                    new_attachments.append({
+                        'id': attachment.id,
+                        'file_name': attachment.file_name,
+                        'file_type': attachment.file_type,
+                        'file_size': attachment.file_size,
+                        'file_url': request.build_absolute_uri(attachment.file.url) if attachment.file else None,
+                    })
+                except Exception as e:
+                    logger.error(f"Error processing file upload: {uploaded_file.name} - {str(e)}")
+                    continue  # Skip files that cause errors
         
         # Get all attachments after update
         all_attachments = []

@@ -37,6 +37,7 @@ def api_root_view(request):
             'towns': '/api/towns/',
             'government': '/api/government/',
             'citizen': '/api/citizen/',
+            'business': '/api/business/',
             'admin': '/admin/',
         },
         'documentation': 'This is the TownHall REST API backend. The frontend is served separately via Next.js.'
@@ -75,6 +76,7 @@ def api_help_view(request, **kwargs):
                 'towns': '/api/towns/',
                 'government': '/api/government/',
                 'citizen': '/api/citizen/',
+                'business': '/api/business/',
             }
         }, status=status.HTTP_404_NOT_FOUND)
     else:
@@ -87,6 +89,7 @@ def api_help_view(request, **kwargs):
                 'towns': '/api/towns/',
                 'government': '/api/government/',
                 'citizen': '/api/citizen/',
+                'business': '/api/business/',
             }
         }, status=status.HTTP_404_NOT_FOUND)
 
@@ -98,6 +101,7 @@ urlpatterns = [
     path('api/towns/', include('towns.urls')),
     path('api/government/', include('government.urls')),
     path('api/citizen/', include('citizen.urls')),
+    path('api/business/', include('businessowner.urls')),
     # Helpful responses for common incorrect paths (must be after all other paths)
     path('citizen/', api_help_view, {'path_name': 'citizen'}, name='citizen_help'),
     path('government/', api_help_view, {'path_name': 'government'}, name='government_help'),

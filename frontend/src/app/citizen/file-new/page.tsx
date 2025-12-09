@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, X, Image as ImageIcon } from "lucide-react";
+import { validateFile, validateFiles, sanitizeFilename } from "@/lib/fileValidation";
 
 export default function FileNewComplaintPage() {
   const [formData, setFormData] = useState({
@@ -31,14 +32,23 @@ export default function FileNewComplaintPage() {
     const files = e.target.files;
     if (files) {
       const fileArray = Array.from(files);
-      // Filter for image files only
-      const imageFiles = fileArray.filter(file => file.type.startsWith('image/'));
       
       // Limit to 5 images
       const remainingSlots = 5 - uploadedImages.length;
-      const filesToAdd = imageFiles.slice(0, remainingSlots);
+      const filesToProcess = fileArray.slice(0, remainingSlots);
       
-      setUploadedImages(prev => [...prev, ...filesToAdd]);
+      // Comprehensive file validation (only images allowed)
+      const imageFiles = filesToProcess.filter(file => {
+        const validation = validateFile(file);
+        // Additional check: must be an image type
+        const isImage = file.type.startsWith('image/') || 
+                       ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg'].some(ext => 
+                         file.name.toLowerCase().endsWith(ext)
+                       );
+        return validation.isValid && isImage;
+      });
+      
+      setUploadedImages(prev => [...prev, ...imageFiles]);
     }
   };
 

@@ -14,6 +14,7 @@ import { ArrowLeft, FileText, MapPin, AlertCircle, CheckCircle, Loader2, Upload,
 import { useAuth } from "@/contexts/AuthContext";
 import { complaintsApi } from "@/lib/api";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { validateFile, validateFiles, sanitizeFilename, MAX_FILE_SIZE } from "@/lib/fileValidation";
 
 const COMPLAINT_CATEGORIES = [
   { value: "infrastructure", label: "Infrastructure" },
@@ -66,37 +67,33 @@ export default function CreateComplaintPage() {
     const files = e.target.files;
     if (files) {
       const fileArray = Array.from(files);
-      // Filter for valid file types (images, PDFs, documents)
-      const validFiles = fileArray.filter(file => {
-        const fileType = file.type.toLowerCase();
-        const fileName = file.name.toLowerCase();
-        const validTypes = [
-          'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
-          'application/pdf',
-          'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          'text/plain'
-        ];
-        const validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf', '.doc', '.docx', '.txt'];
-        const hasValidType = validTypes.includes(fileType);
-        const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
-        return hasValidType || hasValidExtension;
-      });
       
       // Limit to 5 files total
       const remainingSlots = 5 - uploadedFiles.length;
-      const filesToAdd = validFiles.slice(0, remainingSlots);
+      const filesToProcess = fileArray.slice(0, remainingSlots);
       
-      // Check file sizes (max 10MB per file)
-      const validSizeFiles = filesToAdd.filter(file => {
-        if (file.size > 10 * 1024 * 1024) {
-          setError(`${file.name} is too large. Maximum file size is 10MB.`);
-          return false;
+      // Comprehensive file validation
+      const { validFiles, errors } = validateFiles(filesToProcess);
+      
+      // Show errors if any
+      if (errors.length > 0) {
+        setError(errors.join('; '));
+      } else {
+        setError(null);
+      }
+      
+      // Add valid files
+      if (validFiles.length > 0) {
+        setUploadedFiles(prev => [...prev, ...validFiles]);
+      }
+      
+      // Show warning if some files were rejected
+      if (fileArray.length > validFiles.length) {
+        const rejectedCount = fileArray.length - validFiles.length;
+        if (errors.length === 0) {
+          setError(`${rejectedCount} file(s) were rejected due to validation errors.`);
         }
-        return true;
-      });
-      
-      setUploadedFiles(prev => [...prev, ...validSizeFiles]);
-      setError(null);
+      }
     }
   };
 
@@ -370,7 +367,7 @@ export default function CreateComplaintPage() {
                           type="file"
                           id="files"
                           multiple
-                          accept="image/*,.pdf,.doc,.docx,.txt"
+                          accept=".jpg,.jpeg,.png,.gif,.webp,.bmp,.svg,.pdf,.doc,.docx,.txt,.rtf,.xls,.xlsx,.csv"
                           onChange={handleFileChange}
                           className="hidden"
                           disabled={uploadedFiles.length >= 5}
@@ -384,7 +381,10 @@ export default function CreateComplaintPage() {
                             Click to upload or drag and drop
                           </p>
                           <p className="text-xs text-gray-500 dark:text-gray-500">
-                            Images, PDFs, Documents (Max 5 files, 10MB each)
+                            Images, PDFs, Documents (Max 5 files, {MAX_FILE_SIZE / (1024 * 1024)}MB each)
+                          </p>
+                          <p className="text-xs text-red-500 dark:text-red-400 mt-1">
+                            Executable files (.exe, .bat, .sh, etc.) are not allowed for security reasons
                           </p>
                         </label>
                       </div>

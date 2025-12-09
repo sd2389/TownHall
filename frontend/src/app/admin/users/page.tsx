@@ -2,13 +2,12 @@
 
 import { useState, useEffect, useCallback } from "react";
 import AdminLayout from "@/components/layout/AdminLayout";
-import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import AdminProtectedRoute from "@/components/auth/AdminProtectedRoute";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { CheckCircle, XCircle, Search, Users as UsersIcon, Building, Shield, Filter } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api';
 
@@ -26,18 +25,26 @@ interface User {
 }
 
 export default function AdminUsers() {
-  const { token } = useAuth();
+  const [adminToken, setAdminToken] = useState<string | null>(null);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRole, setFilterRole] = useState<"all" | "citizen" | "business" | "government">("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "pending" | "approved">("all");
   const [loading, setLoading] = useState(true);
 
+  // Get admin token from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('admin_token');
+      setAdminToken(token);
+    }
+  }, []);
+
   const fetchAllUsers = useCallback(async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/all-users/`, {
         headers: {
-          'Authorization': `Token ${token}`,
+          'Authorization': `Token ${adminToken}`,
           'Content-Type': 'application/json',
         },
       });
@@ -57,20 +64,20 @@ export default function AdminUsers() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [adminToken]);
 
   useEffect(() => {
-    if (token) {
+    if (adminToken) {
       fetchAllUsers();
     }
-  }, [token, fetchAllUsers]);
+  }, [adminToken, fetchAllUsers]);
 
   const handleApproveUser = async (userId: number) => {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/approve-user/${userId}/`, {
         method: 'POST',
         headers: {
-          'Authorization': `Token ${token}`,
+          'Authorization': `Token ${adminToken}`,
           'Content-Type': 'application/json',
         },
       });
@@ -96,7 +103,7 @@ export default function AdminUsers() {
       const response = await fetch(`${API_BASE_URL}/auth/reject-user/${userId}/`, {
         method: 'POST',
         headers: {
-          'Authorization': `Token ${token}`,
+          'Authorization': `Token ${adminToken}`,
           'Content-Type': 'application/json',
         },
       });
@@ -147,7 +154,7 @@ export default function AdminUsers() {
   });
 
   return (
-    <ProtectedRoute allowedRoles={['government', 'superuser']}>
+    <AdminProtectedRoute>
       <AdminLayout currentPage="users">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
@@ -314,7 +321,7 @@ export default function AdminUsers() {
           )}
         </div>
       </AdminLayout>
-    </ProtectedRoute>
+    </AdminProtectedRoute>
   );
 }
 

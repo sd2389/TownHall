@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import AdminLayout from "@/components/layout/AdminLayout";
-import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { 
   Users, 
@@ -19,9 +19,14 @@ import {
   Activity,
   Calendar,
   UserCheck,
+  Eye,
+  EyeOff,
+  ArrowLeft,
   MapPin as MapPinIcon
 } from "lucide-react";
+import AdminLayout from "@/components/layout/AdminLayout";
 import { useAuth } from "@/contexts/AuthContext";
+import Link from "next/link";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
@@ -44,7 +49,156 @@ interface TownChangeRequest {
   requested_at: string;
 }
 
-export default function AdminDashboard() {
+// Admin Login Component
+function AdminLoginForm() {
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
+
+  const router = useRouter();
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    if (error) setError("");
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/admin-login/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
+
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseError) {
+        throw new Error('Invalid response from server');
+      }
+
+      if (response.ok) {
+        if (data.token) {
+          localStorage.setItem('admin_token', data.token);
+        }
+        if (data.user) {
+          localStorage.setItem('admin_user', JSON.stringify(data.user));
+        }
+        // Small delay to ensure localStorage is set, then redirect
+        setTimeout(() => {
+          window.location.href = '/admin';
+        }, 100);
+      } else {
+        setError(data.error || 'Invalid credentials. Please try again.');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Network error. Please check your connection and try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <div className="w-full max-w-md">
+        <Card className="shadow-md">
+          <CardHeader className="text-center pb-6">
+            <div className="flex justify-center mb-4">
+              <div className="p-3 bg-[#003153] rounded-lg">
+                <Shield className="h-6 w-6 text-white" />
+              </div>
+            </div>
+            <CardTitle className="text-2xl font-bold">Admin Login</CardTitle>
+            <CardDescription>Sign in to access the admin panel</CardDescription>
+          </CardHeader>
+          
+          <CardContent>
+            {error && (
+              <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="admin@example.com"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    className="pr-10"
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full bg-[#003153] hover:bg-[#003153]/90 text-white"
+                disabled={isLoading}
+              >
+                {isLoading ? "Signing in..." : "Sign In"}
+              </Button>
+            </form>
+
+            <div className="mt-4 text-center">
+              <Link href="/" className="text-sm text-gray-600 hover:text-gray-900">
+                <ArrowLeft className="h-4 w-4 inline mr-1" />
+                Back to Home
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// Admin Dashboard Component
+function AdminDashboard() {
   const { user, token } = useAuth();
   const router = useRouter();
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
@@ -55,32 +209,83 @@ export default function AdminDashboard() {
     approvedToday: 0,
     rejectedToday: 0
   });
-  const [loading, setLoading] = useState(true);
-  const [adminToken, setAdminToken] = useState<string | null>(null);
-  const [adminUser, setAdminUser] = useState<any>(null);
-
-  // Check for admin authentication
-  useEffect(() => {
+  // Initialize state by checking localStorage immediately (synchronously)
+  const getInitialAdminToken = (): string | null => {
     if (typeof window !== 'undefined') {
-      const storedToken = localStorage.getItem('admin_token');
+      return localStorage.getItem('admin_token');
+    }
+    return null;
+  };
+
+  const getInitialAdminUser = (): any => {
+    if (typeof window !== 'undefined') {
       const storedUser = localStorage.getItem('admin_user');
-      
-      if (storedToken && storedUser) {
-        setAdminToken(storedToken);
-        setAdminUser(JSON.parse(storedUser));
-      } else {
+      if (storedUser) {
+        try {
+          return JSON.parse(storedUser);
+        } catch (e) {
+          console.error('Error parsing admin user:', e);
+        }
+      }
+    }
+    return null;
+  };
+
+  const [loading, setLoading] = useState(true);
+  const [adminToken, setAdminToken] = useState<string | null>(getInitialAdminToken);
+  const [adminUser, setAdminUser] = useState<any>(getInitialAdminUser);
+
+  // Check for admin authentication - run immediately on mount
+  useEffect(() => {
+    const checkAdminAuth = () => {
+      if (typeof window !== 'undefined') {
+        const storedToken = localStorage.getItem('admin_token');
+        const storedUser = localStorage.getItem('admin_user');
+        
+        if (storedToken && storedUser) {
+          setAdminToken(storedToken);
+          try {
+            setAdminUser(JSON.parse(storedUser));
+          } catch (e) {
+            console.error('Error parsing admin user:', e);
+          }
+          setLoading(false);
+          return;
+        }
+        
         // Check if user is superuser from regular auth
         if (user?.is_superuser || user?.role === 'superuser') {
           // Allow access with regular token
           setAdminToken(token || '');
           setAdminUser(user);
-        } else if (!loading) {
-          // Only redirect if we're done loading and no auth found
-          router.push('/admin/login');
+          setLoading(false);
+          return;
         }
+        
+        // No admin token found
+        setLoading(false);
       }
+    };
+    
+    // If we already have a token from initial state, don't reload
+    if (adminToken) {
+      setLoading(false);
+      return;
     }
-  }, [user, token, router, loading]);
+    
+    // Check immediately
+    checkAdminAuth();
+    
+    // Also listen for storage changes (in case token is set in another tab/window)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'admin_token' || e.key === 'admin_user') {
+        checkAdminAuth();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [user, token, adminToken]);
 
   const fetchData = useCallback(async () => {
     if (!adminToken) return;
@@ -108,458 +313,174 @@ export default function AdminDashboard() {
       }
 
       if (townChangesRes.ok) {
-        const townChangesData = await townChangesRes.json();
-        setTownChangeRequests(townChangesData);
-        setStats(prev => ({ ...prev, pendingTownChanges: townChangesData.length }));
+        const townData = await townChangesRes.json();
+        setTownChangeRequests(townData);
+        setStats(prev => ({ ...prev, pendingTownChanges: townData.length }));
       }
-    } catch (err) {
-      console.error('Error fetching data:', err);
+    } catch (error) {
+      console.error('Error fetching admin data:', error);
     } finally {
       setLoading(false);
     }
   }, [adminToken]);
 
   useEffect(() => {
-    if (adminToken && (adminUser?.is_superuser || adminUser?.is_staff || user?.is_superuser)) {
+    if (adminToken) {
       fetchData();
+    } else {
+      // If no token after checking, stop loading
+      setLoading(false);
     }
-  }, [adminToken, adminUser, user, fetchData]);
+  }, [adminToken, fetchData]);
 
-  const handleApproveUser = async (userId: number) => {
-    if (!adminToken) return;
-    
-    try {
-      const response = await fetch(`${API_BASE_URL}/auth/approve-user/${userId}/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Token ${adminToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
+  // Show login if not authenticated
+  if (!adminToken && !loading) {
+    return <AdminLoginForm />;
+  }
 
-      if (response.ok) {
-        fetchData();
-        setStats(prev => ({ ...prev, approvedToday: prev.approvedToday + 1 }));
-      }
-    } catch (err) {
-      alert('Failed to approve user');
-    }
-  };
-
-  const handleRejectUser = async (userId: number) => {
-    if (!adminToken) return;
-    
-    if (!confirm('Are you sure you want to reject this user? This cannot be undone.')) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/auth/reject-user/${userId}/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Token ${adminToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        fetchData();
-        setStats(prev => ({ ...prev, rejectedToday: prev.rejectedToday + 1 }));
-      }
-    } catch (err) {
-      alert('Failed to reject user');
-    }
-  };
-
-  const getRoleIcon = (role: string) => {
-    switch (role) {
-      case 'citizen': return <Users className="h-5 w-5 text-gray-600" />;
-      case 'business': return <Building className="h-5 w-5 text-gray-600" />;
-      case 'government': return <Shield className="h-5 w-5 text-gray-600" />;
-      default: return <Users className="h-5 w-5 text-gray-600" />;
-    }
-  };
-
-  // Show loading if no admin token
-  if (!adminToken) {
+  if (loading || !adminToken) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#003153]"></div>
+          <p className="mt-4 text-gray-600">Loading admin dashboard...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <ProtectedRoute allowedRoles={['government', 'superuser']}>
-      <AdminLayout currentPage="dashboard">
-        {/* Header */}
-        <div className="mb-4">
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-sm text-gray-600">Welcome back, {user?.firstName}. Here&apos;s what&apos;s happening today.</p>
-        </div>
+    <AdminLayout currentPage="dashboard">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="mb-6">
+            <h2 className="text-2xl font-semibold text-gray-900">Admin Dashboard</h2>
+            <p className="text-gray-600">Manage users, towns, and system settings</p>
+          </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-          {/* Pending Users Card */}
-          <Card className="hover:shadow-md transition-shadow">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-blue-50 rounded-lg">
-                  <Clock className="h-6 w-6 text-blue-600" />
-                </div>
-                {stats.pendingUsers > 0 && (
-                  <Badge className="bg-blue-100 text-blue-700">Action Required</Badge>
-                )}
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Pending User Approvals</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.pendingUsers}</p>
-                <p className="text-xs text-gray-500 mt-2">Awaiting your review</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Town Changes Card */}
-          <Card className="hover:shadow-md transition-shadow">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <MapPin className="h-6 w-6 text-gray-600" />
-                </div>
-                {stats.pendingTownChanges > 0 && (
-                  <Badge className="bg-gray-100 text-gray-700">Review Needed</Badge>
-                )}
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Town Change Requests</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.pendingTownChanges}</p>
-                <p className="text-xs text-gray-500 mt-2">Pending location changes</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Today's Approvals Card */}
-          <Card className="hover:shadow-md transition-shadow">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-green-50 rounded-lg">
-                  <UserCheck className="h-6 w-6 text-green-600" />
-                </div>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Approved Today</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.approvedToday}</p>
-                <p className="text-xs text-gray-500 mt-2">Accounts activated</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Activity Card */}
-          <Card className="hover:shadow-md transition-shadow">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <Activity className="h-6 w-6 text-gray-600" />
-                </div>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 mb-1">System Status</p>
-                <p className="text-3xl font-bold text-green-600">Active</p>
-                <p className="text-xs text-gray-500 mt-2">All systems operational</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Pending Actions - Left Column */}
-          <div className="lg:col-span-2 space-y-4">
-            {/* Pending Users Section */}
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
             <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-50 rounded-lg">
-                      <Users className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">Pending User Approvals</CardTitle>
-                      <p className="text-xs text-gray-600">Review and approve new registrations</p>
-                    </div>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className="w-12 h-12 bg-[#003153] rounded-lg flex items-center justify-center mr-4">
+                    <Users className="h-6 w-6 text-white" />
                   </div>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => window.location.href = '/admin/users'}
-                    className="text-sm"
-                  >
-                    View All →
-                  </Button>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Pending Users</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.pendingUsers}</p>
+                  </div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="text-center py-8">
-                    <p className="text-gray-600">Loading...</p>
-                  </div>
-                ) : pendingUsers.length === 0 ? (
-                  <div className="text-center py-8">
-                    <CheckCircle className="h-12 w-12 text-green-400 mx-auto mb-3" />
-                    <p className="text-gray-600 font-medium text-sm">No pending users</p>
-                    <p className="text-xs text-gray-500 mt-1">All users have been reviewed</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {pendingUsers.slice(0, 3).map((pendingUser) => (
-                      <div key={pendingUser.user_id} className="border border-gray-200 rounded-lg p-3 hover:shadow-sm transition-shadow">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start gap-3">
-                            <div className="p-2 bg-gray-100 rounded-lg">
-                              {getRoleIcon(pendingUser.role)}
-                            </div>
-                            <div>
-                              <h3 className="font-semibold text-gray-900 text-sm">
-                                {pendingUser.firstName} {pendingUser.lastName}
-                              </h3>
-                              <p className="text-xs text-gray-600">{pendingUser.email}</p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <Badge className="bg-gray-100 text-gray-700">{pendingUser.role}</Badge>
-                                <span className="text-xs text-gray-500">
-                                  {new Date(pendingUser.created_at).toLocaleDateString()}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button
-                              onClick={() => handleApproveUser(pendingUser.user_id)}
-                              size="sm"
-                              className="bg-gray-900 hover:bg-gray-800 text-white"
-                            >
-                              <CheckCircle className="h-4 w-4 mr-1" />
-                              Approve
-                            </Button>
-                            <Button
-                              onClick={() => handleRejectUser(pendingUser.user_id)}
-                              variant="outline"
-                              size="sm"
-                              className="border-red-300 text-red-700 hover:bg-red-50"
-                            >
-                              <XCircle className="h-4 w-4 mr-1" />
-                              Reject
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    {pendingUsers.length > 3 && (
-                      <div className="text-center pt-2">
-                        <Button variant="outline" onClick={() => window.location.href = '/admin/users'}>
-                          View all {pendingUsers.length} pending users →
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                )}
               </CardContent>
             </Card>
 
-            {/* Town Changes Section */}
             <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-gray-50 rounded-lg">
-                      <MapPinIcon className="h-5 w-5 text-gray-600" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">Recent Town Change Requests</CardTitle>
-                      <p className="text-xs text-gray-600">Location change approvals</p>
-                    </div>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className="w-12 h-12 bg-yellow-500 rounded-lg flex items-center justify-center mr-4">
+                    <MapPin className="h-6 w-6 text-white" />
                   </div>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => window.location.href = '/admin/towns'}
-                    className="text-sm"
-                  >
-                    View All →
-                  </Button>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Town Changes</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.pendingTownChanges}</p>
+                  </div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="text-center py-8">
-                    <p className="text-gray-600">Loading...</p>
-                  </div>
-                ) : townChangeRequests.length === 0 ? (
-                  <div className="text-center py-8">
-                    <MapPin className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-gray-600 font-medium text-sm">No pending requests</p>
-                    <p className="text-xs text-gray-500 mt-1">All requests have been processed</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {townChangeRequests.slice(0, 3).map((request) => (
-                      <div key={request.id} className="border border-gray-200 rounded-lg p-3 hover:shadow-sm transition-shadow">
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <h3 className="font-semibold text-gray-900 text-sm">{request.user_name}</h3>
-                            <p className="text-xs text-gray-600">{request.user_email}</p>
-                          </div>
-                          <Badge className="bg-gray-100 text-gray-700 text-xs">
-                            {request.status.replace('_', ' ')}
-                          </Badge>
-                        </div>
-                        
-                        <div className="flex items-center gap-4 text-xs mb-2">
-                          <div>
-                            <span className="text-gray-600">From:</span>
-                            <span className="ml-2 font-medium text-gray-900">{request.current_town}</span>
-                          </div>
-                          <span className="text-gray-400">→</span>
-                          <div>
-                            <span className="text-gray-600">To:</span>
-                            <span className="ml-2 font-medium text-gray-900">{request.requested_town}</span>
-                          </div>
-                        </div>
+              </CardContent>
+            </Card>
 
-                        <div className="flex gap-2 pt-2 border-t border-gray-100">
-                          <Button
-                            size="sm"
-                            className="bg-gray-900 hover:bg-gray-800 text-white flex-1 text-xs"
-                          >
-                            Review
-                          </Button>
-                        </div>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center mr-4">
+                    <CheckCircle className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Approved Today</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.approvedToday}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-                        <p className="text-xs text-gray-500 mt-2">
-                          Requested {new Date(request.requested_at).toLocaleString()}
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className="w-12 h-12 bg-red-600 rounded-lg flex items-center justify-center mr-4">
+                    <XCircle className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Rejected Today</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.rejectedToday}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Pending Users */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Pending User Approvals</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {pendingUsers.length === 0 ? (
+                <p className="text-gray-600 text-center py-8">No pending users</p>
+              ) : (
+                <div className="space-y-4">
+                  {pendingUsers.map((user) => (
+                    <div key={user.user_id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div>
+                        <p className="font-semibold">{user.firstName} {user.lastName}</p>
+                        <p className="text-sm text-gray-600">{user.email}</p>
+                        <Badge className="mt-2">{user.role}</Badge>
+                      </div>
+                      <Button
+                        onClick={() => router.push(`/admin/users`)}
+                        size="sm"
+                        className="bg-[#003153] hover:bg-[#003153]/90"
+                      >
+                        Review
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Town Change Requests */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Town Change Requests</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {townChangeRequests.length === 0 ? (
+                <p className="text-gray-600 text-center py-8">No pending town change requests</p>
+              ) : (
+                <div className="space-y-4">
+                  {townChangeRequests.map((request) => (
+                    <div key={request.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div>
+                        <p className="font-semibold">{request.user_name}</p>
+                        <p className="text-sm text-gray-600">{request.user_email}</p>
+                        <p className="text-sm mt-1">
+                          <span className="text-gray-500">{request.current_town}</span>
+                          <span className="mx-2">→</span>
+                          <span className="font-medium">{request.requested_town}</span>
                         </p>
                       </div>
-                    ))}
-                    {townChangeRequests.length > 3 && (
-                      <div className="text-center pt-1">
-                        <Button variant="outline" size="sm" onClick={() => window.location.href = '/admin/towns'}>
-                          View all {townChangeRequests.length} requests →
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Right Sidebar */}
-          <div className="space-y-4">
-            {/* Quick Actions */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-gray-600" />
-                  Quick Actions
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1.5">
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start"
-                  onClick={() => window.location.href = '/admin/users'}
-                >
-                  <Users className="mr-2 h-4 w-4" />
-                  Manage Users
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start"
-                  onClick={() => window.location.href = '/admin/towns'}
-                >
-                  <MapPin className="mr-2 h-4 w-4" />
-                  Town Management
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start"
-                  onClick={() => window.location.href = '/admin/reports'}
-                >
-                  <FileText className="mr-2 h-4 w-4" />
-                  View Reports
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start"
-                  onClick={() => window.location.href = '/admin/settings'}
-                >
-                  <Shield className="mr-2 h-4 w-4" />
-                  Settings
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Today's Summary */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-gray-600" />
-                  Today's Activity
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex items-center justify-between p-2.5 bg-green-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                    <span className="text-sm text-gray-700">Approved</span>
-                  </div>
-                  <span className="font-semibold text-gray-900">{stats.approvedToday}</span>
-                </div>
-                
-                <div className="flex items-center justify-between p-2.5 bg-red-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <XCircle className="h-5 w-5 text-red-600" />
-                    <span className="text-sm text-gray-700">Rejected</span>
-                  </div>
-                  <span className="font-semibold text-gray-900">{stats.rejectedToday}</span>
-                </div>
-
-                <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <Clock className="h-5 w-5 text-gray-600" />
-                    <span className="text-sm text-gray-700">Pending</span>
-                  </div>
-                  <span className="font-semibold text-gray-900">{stats.pendingUsers}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* System Info */}
-            <Card className="border-gray-200">
-              <CardContent className="p-4">
-                <div className="text-center">
-                  <div className="inline-flex items-center justify-center w-10 h-10 bg-gray-900 rounded-full mb-3">
-                    <Shield className="h-6 w-6 text-white" />
-                  </div>
-                  <h3 className="font-semibold text-gray-900 mb-1 text-sm">TownHall Admin</h3>
-                  <p className="text-xs text-gray-600 mb-3">Administration Control Panel</p>
-                  <div className="space-y-1.5 text-xs">
-                    <div className="flex justify-between text-gray-600">
-                      <span>Status:</span>
-                      <span className="font-medium text-green-600">Operational</span>
+                      <Badge>{request.status}</Badge>
                     </div>
-                    <div className="flex justify-between text-gray-600">
-                      <span>Role:</span>
-                      <span className="font-medium text-gray-900">{user?.role}</span>
-                    </div>
-                    <div className="flex justify-between text-gray-600">
-                      <span>Town:</span>
-                      <span className="font-medium text-gray-900">{user?.town || 'All'}</span>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </AdminLayout>
-    </ProtectedRoute>
   );
+}
+
+export default function AdminPage() {
+  return <AdminDashboard />;
 }

@@ -24,7 +24,8 @@ import {
   CheckCircle,
   Clock,
   ChevronDown,
-  Phone
+  Phone,
+  UserCheck
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -106,7 +107,9 @@ export default function PortalNavigation({ currentUserType, userName }: PortalNa
           return [
             { name: "Dashboard", href: "/government", icon: BarChart3 },
             { name: "Complaints", href: "/government/complaints", icon: FileText },
+            { name: "Business Applications", href: "/government/business-applications", icon: Building2 },
             { name: "Announcements", href: "/government/announcements", icon: Bell },
+            { name: "Users", href: "/government/users", icon: UserCheck },
             { name: "Reports", href: "/government/reports", icon: TrendingUp }
           ];
         default:

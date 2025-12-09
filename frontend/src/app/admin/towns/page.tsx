@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import AdminLayout from "@/components/layout/AdminLayout";
-import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import AdminProtectedRoute from "@/components/auth/AdminProtectedRoute";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Search, CheckCircle, Clock, Plus } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
@@ -30,22 +29,28 @@ interface TownChangeRequest {
 }
 
 export default function AdminTowns() {
-  const { token } = useAuth();
+  const [adminToken, setAdminToken] = useState<string | null>(null);
   const [townChangeRequests, setTownChangeRequests] = useState<TownChangeRequest[]>([]);
   const [activeTowns, setActiveTowns] = useState<Town[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState<"changes" | "towns">("towns");
 
+  // Get admin token from localStorage
   useEffect(() => {
-    fetchData();
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('admin_token');
+      setAdminToken(token);
+    }
   }, []);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
+    if (!adminToken) return;
+    
     try {
       const [townChangesRes, townsRes] = await Promise.all([
         fetch(`${API_BASE_URL}/towns/change-requests/`, {
           headers: {
-            'Authorization': `Token ${token}`,
+            'Authorization': `Token ${adminToken}`,
             'Content-Type': 'application/json',
           },
         }),
@@ -70,14 +75,20 @@ export default function AdminTowns() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [adminToken]);
+
+  useEffect(() => {
+    if (adminToken) {
+      fetchData();
+    }
+  }, [adminToken, fetchData]);
 
   const handleApprove = async (requestId: number) => {
     try {
       const response = await fetch(`${API_BASE_URL}/towns/change-request/${requestId}/approve/`, {
         method: 'POST',
         headers: {
-          'Authorization': `Token ${token}`,
+          'Authorization': `Token ${adminToken}`,
           'Content-Type': 'application/json',
         },
       });
@@ -99,7 +110,7 @@ export default function AdminTowns() {
       const response = await fetch(`${API_BASE_URL}/towns/change-request/${requestId}/reject/`, {
         method: 'POST',
         headers: {
-          'Authorization': `Token ${token}`,
+          'Authorization': `Token ${adminToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ reason }),
@@ -131,7 +142,7 @@ export default function AdminTowns() {
   };
 
   return (
-    <ProtectedRoute allowedRoles={['government', 'superuser']}>
+    <AdminProtectedRoute>
       <AdminLayout currentPage="towns">
         <div className="max-w-7xl mx-auto">
           {/* Tabs */}
@@ -291,7 +302,7 @@ export default function AdminTowns() {
           )}
         </div>
       </AdminLayout>
-    </ProtectedRoute>
+    </AdminProtectedRoute>
   );
 }
 

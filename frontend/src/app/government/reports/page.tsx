@@ -241,17 +241,28 @@ export default function GovernmentReports() {
         "Prepare for increased weather-related issues",
         "Continue staff training programs"
   const getStatusColor = (status: string) => {
-    switch (status) {
+    switch (status?.toLowerCase()) {
       case "completed":
-        return "bg-green-100 text-green-800";
+      case "resolved":
+      case "published":
+      case "approved":
+        return "bg-green-600 text-white dark:bg-green-700 dark:text-white";
       case "in_progress":
-        return "bg-blue-100 text-blue-800";
+      case "in progress":
+      case "under review":
+        return "bg-blue-600 text-white dark:bg-blue-700 dark:text-white";
       case "pending":
-        return "bg-yellow-100 text-yellow-800";
+      case "pending review":
+      case "open":
+        return "bg-yellow-500 text-white dark:bg-yellow-600 dark:text-white";
       case "failed":
-        return "bg-red-100 text-red-800";
+      case "closed":
+      case "archived":
+        return "bg-red-600 text-white dark:bg-red-700 dark:text-white";
+      case "draft":
+        return "bg-gray-500 text-white dark:bg-gray-600 dark:text-white";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-500 text-white dark:bg-gray-600 dark:text-white";
     }
   };
 
@@ -320,10 +331,10 @@ export default function GovernmentReports() {
           >
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               {[
-                { title: "Total Reports", value: "24", icon: FileText, color: "bg-blue-500" },
-                { title: "This Month", value: "8", icon: Calendar, color: "bg-green-500" },
-                { title: "In Progress", value: "3", icon: Clock, color: "bg-yellow-500" },
-                { title: "Completed", value: "21", icon: CheckCircle, color: "bg-purple-500" }
+                { title: "Total Reports", value: "24", icon: FileText, color: "bg-[#003153]" },
+                { title: "This Month", value: "8", icon: Calendar, color: "bg-[#003153]/80" },
+                { title: "In Progress", value: "3", icon: Clock, color: "bg-[#003153]/60" },
+                { title: "Completed", value: "21", icon: CheckCircle, color: "bg-[#003153]/90" }
               ].map((stat, index) => {
                 const Icon = stat.icon;
                 return (

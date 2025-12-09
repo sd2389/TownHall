@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import AdminLayout from "@/components/layout/AdminLayout";
-import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import AdminProtectedRoute from "@/components/auth/AdminProtectedRoute";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,6 @@ import {
   Save,
   X
 } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
@@ -51,7 +50,7 @@ export default function AdminDepartments() {
     try {
       const response = await fetch(`${API_BASE_URL}/government/departments/`, {
         headers: {
-          'Authorization': `Token ${token}`,
+          'Authorization': `Token ${adminToken}`,
           'Content-Type': 'application/json',
         },
       });
@@ -70,13 +69,13 @@ export default function AdminDepartments() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [adminToken]);
 
   useEffect(() => {
-    if (token) {
+    if (adminToken) {
       fetchDepartments();
     }
-  }, [token, fetchDepartments]);
+  }, [adminToken, fetchDepartments]);
 
   const handleCreateDepartment = async () => {
     if (!formData.name.trim()) {
@@ -88,7 +87,7 @@ export default function AdminDepartments() {
       const response = await fetch(`${API_BASE_URL}/government/departments/create/`, {
         method: 'POST',
         headers: {
-          'Authorization': `Token ${token}`,
+          'Authorization': `Token ${adminToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(formData),
@@ -129,7 +128,7 @@ export default function AdminDepartments() {
       const response = await fetch(`${API_BASE_URL}/government/departments/${editingDepartment.id}/`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Token ${token}`,
+          'Authorization': `Token ${adminToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(formData),
@@ -159,7 +158,7 @@ export default function AdminDepartments() {
       const response = await fetch(`${API_BASE_URL}/government/departments/${deptId}/delete/`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Token ${token}`,
+          'Authorization': `Token ${adminToken}`,
           'Content-Type': 'application/json',
         },
       });
@@ -182,7 +181,7 @@ export default function AdminDepartments() {
   );
 
   return (
-    <ProtectedRoute allowedRoles={['government', 'superuser']}>
+    <AdminProtectedRoute>
       <AdminLayout currentPage="departments">
         <div className="p-6 space-y-6">
           {/* Header */}
@@ -442,7 +441,7 @@ export default function AdminDepartments() {
           </Dialog>
         </div>
       </AdminLayout>
-    </ProtectedRoute>
+    </AdminProtectedRoute>
   );
 }
 

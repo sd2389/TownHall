@@ -59,15 +59,21 @@ import {
 } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { useAuth } from "@/contexts/AuthContext";
+import { businessApi, businessEventsApi } from "@/lib/api";
 import React, { useState, useEffect } from "react";
 
 export default function BusinessPortal() {
+  const { user } = useAuth();
   const [selectedApplication, setSelectedApplication] = useState<any>(null);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [newComment, setNewComment] = useState("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [applications, setApplications] = useState<any[]>([]);
+  const [events, setEvents] = useState<any[]>([]);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Comment functionality
   const handleSubmitComment = async (applicationId: number) => {
@@ -100,124 +106,66 @@ export default function BusinessPortal() {
     }, 1000);
   };
 
+  // Fetch data from API
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const [applicationsData, eventsData] = await Promise.all([
+          businessApi.licenses.list({}),
+          businessEventsApi.list({})
+        ]);
+        
+        // Map applications
+        const mappedApplications = applicationsData.map((license: any) => ({
+          id: license.id,
+          title: license.license_type,
+          description: license.description || '',
+          status: license.status,
+          priority: license.status === 'pending' ? 'medium' : license.status === 'approved' ? 'high' : 'low',
+          created: license.created_at,
+          category: "License",
+          type: license.license_type,
+          assignedTo: "Business Licensing Dept",
+          estimatedResolution: license.status === 'approved' ? 'Completed' : 
+                               license.status === 'rejected' ? 'Rejected' : 'Pending Review',
+          fee: "N/A",
+          documents: []
+        }));
+        
+        // Map events
+        const mappedEvents = eventsData.map((event: any) => ({
+          id: event.id,
+          title: event.title,
+          description: event.description,
+          date: event.event_date,
+          time: event.event_time,
+          location: event.location,
+          status: event.status,
+          attendees: event.current_attendees || 0,
+          type: "Business Event"
+        }));
+        
+        setApplications(mappedApplications);
+        setEvents(mappedEvents);
+        setAnnouncements([]); // Announcements not in API yet
+      } catch (err: any) {
+        console.error('Error fetching data:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (user) {
+      fetchData();
+    }
+  }, [user]);
+
   // Filter functionality
   const filteredApplications = applications.filter(application => {
     if (filterStatus === 'all') return true;
     return application.status === filterStatus;
   });
-
-  const businessApplications = [
-    {
-      id: 1,
-      title: "Business License Renewal",
-      description: "Annual renewal application for Priya's Café business license",
-      status: "approved",
-      priority: "high",
-      created: "2024-01-15",
-      category: "License",
-      type: "Renewal",
-      assignedTo: "Business Licensing Dept",
-      estimatedResolution: "Completed",
-      fee: "$150",
-      documents: ["Business Registration", "Tax Certificate", "Insurance Proof"]
-    },
-    {
-      id: 2,
-      title: "Outdoor Seating Permit",
-      description: "Application for outdoor dining area expansion",
-      status: "pending",
-      priority: "medium",
-      created: "2024-01-20",
-      category: "Permit",
-      type: "New Application",
-      assignedTo: "Planning Dept",
-      estimatedResolution: "2 weeks",
-      fee: "$75",
-      documents: ["Site Plan", "Safety Certificate", "Neighbor Consent"]
-    },
-    {
-      id: 3,
-      title: "Event Permit - Community Festival",
-      description: "Special event permit for annual community festival",
-      status: "rejected",
-      priority: "low",
-      created: "2024-01-10",
-      category: "Event",
-      type: "Special Event",
-      assignedTo: "Events Dept",
-      estimatedResolution: "Rejected - Insufficient Documentation",
-      fee: "$200",
-      documents: ["Event Plan", "Security Arrangements", "Insurance"]
-    }
-  ];
-
-  const businessEvents = [
-    {
-      id: 1,
-      title: "Coffee Tasting Event",
-      description: "Monthly coffee tasting event featuring local roasters",
-      date: "2024-02-15",
-      time: "6:00 PM - 8:00 PM",
-      location: "Priya's Café - Main Hall",
-      status: "approved",
-      attendees: 45,
-      type: "Business Event"
-    },
-    {
-      id: 2,
-      title: "Small Business Workshop",
-      description: "Free workshop on digital marketing for local businesses",
-      date: "2024-02-20",
-      time: "10:00 AM - 12:00 PM",
-      location: "Community Center",
-      status: "pending",
-      attendees: 0,
-      type: "Educational Event"
-    },
-    {
-      id: 3,
-      title: "Local Vendor Fair",
-      description: "Monthly fair showcasing local products and services",
-      date: "2024-02-25",
-      time: "9:00 AM - 4:00 PM",
-      location: "Downtown Plaza",
-      status: "approved",
-      attendees: 120,
-      type: "Community Event"
-    }
-  ];
-
-  const announcements = [
-    {
-      id: 1,
-      title: "New Business Tax Incentives",
-      description: "City announces new tax incentives for small businesses in designated zones",
-      date: "2024-02-01",
-      priority: "high",
-      type: "Tax Update"
-    },
-    {
-      id: 2,
-      title: "Updated Licensing Requirements",
-      description: "New requirements for food service businesses effective March 1st",
-      date: "2024-01-25",
-      priority: "medium",
-      type: "Regulation Update"
-    },
-    {
-      id: 3,
-      title: "Business Networking Event",
-      description: "Monthly networking event for local business owners",
-      date: "2024-01-30",
-      priority: "low",
-      type: "Event"
-    }
-  ];
-
-  // Initialize applications with businessApplications data
-  useEffect(() => {
-    setApplications(businessApplications);
-  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -247,7 +195,12 @@ export default function BusinessPortal() {
 
   return (
     <ProtectedRoute allowedRoles={['business']}>
-      <Layout userType="business" userName="Priya Singh" userEmail="priya.singh@email.com" showPortalNav={true}>
+      <Layout 
+        userType="business" 
+        userName={`${user?.firstName || ''} ${user?.lastName || ''}`} 
+        userEmail={user?.email || ''} 
+        showPortalNav={true}
+      >
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
 
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
@@ -326,7 +279,7 @@ export default function BusinessPortal() {
                     </div>
                 </CardHeader>
                   <CardContent className="space-y-5">
-                    {businessApplications.map((application) => (
+                    {filteredApplications.slice(0, 3).map((application) => (
                       <Dialog key={application.id}>
                         <DialogTrigger asChild>
                       <motion.div
@@ -522,7 +475,7 @@ export default function BusinessPortal() {
                     </div>
                 </CardHeader>
                   <CardContent className="space-y-5">
-                    {businessEvents.map((event) => (
+                    {events.slice(0, 3).map((event) => (
                       <Dialog key={event.id}>
                         <DialogTrigger asChild>
                           <motion.div

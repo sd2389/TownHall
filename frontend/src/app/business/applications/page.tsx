@@ -37,104 +37,65 @@ import {
   Bell
 } from "lucide-react";
 import Layout from "@/components/layout/Layout";
-import React, { useState } from "react";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { useAuth } from "@/contexts/AuthContext";
+import { businessApi } from "@/lib/api";
+import React, { useState, useEffect } from "react";
 
 export default function BusinessApplications() {
+  const { user } = useAuth();
   const [selectedApplication, setSelectedApplication] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'under_review'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'expired'>('all');
   const [sortBy, setSortBy] = useState<'date' | 'name' | 'status'>('date');
+  const [applications, setApplications] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const applications = [
-    {
-      id: 1,
-      title: "Business License Renewal",
-      type: "License Renewal",
-      status: "approved",
-      applicationDate: "2024-01-15",
-      approvalDate: "2024-01-22",
-      fee: "$150",
-      description: "Annual renewal application for Priya's Café business license",
-      category: "License",
-      assignedTo: "Business Licensing Dept",
-      estimatedResolution: "Completed",
-      documents: ["Business Registration", "Tax Certificate", "Insurance Proof"],
-      requirements: ["Health Certificate", "Fire Safety Certificate", "Insurance Proof"],
-      comments: [
-        {
-          id: 1,
-          author: "Business Licensing Dept",
-          text: "Application approved. All documents verified.",
-          date: "2024-01-22",
-          type: "official"
+  // Fetch applications from API
+  useEffect(() => {
+    const fetchApplications = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const filters: any = {};
+        if (filterStatus !== 'all') {
+          filters.status = filterStatus;
         }
-      ]
-    },
-    {
-      id: 2,
-      title: "Outdoor Seating Permit",
-      type: "Special Use Permit",
-      status: "under_review",
-      applicationDate: "2024-01-20",
-      approvalDate: null,
-      fee: "$75",
-      description: "Application for outdoor dining area expansion with 20 additional seats",
-      category: "Permit",
-      assignedTo: "Planning Dept",
-      estimatedResolution: "2 weeks",
-      documents: ["Site Plan", "Safety Certificate", "Neighbor Consent"],
-      requirements: ["Site Plan Approval", "Safety Inspection", "Neighbor Consent", "Insurance Coverage"],
-      comments: [
-        {
-          id: 2,
-          author: "Planning Dept",
-          text: "Site plan under review. Safety inspection scheduled for next week.",
-          date: "2024-01-25",
-          type: "official"
-        }
-      ]
-    },
-    {
-      id: 3,
-      title: "Event Permit - Community Festival",
-      type: "Special Event Permit",
-      status: "rejected",
-      applicationDate: "2024-01-10",
-      approvalDate: null,
-      fee: "$200",
-      description: "Special event permit for annual community festival with food vendors and live music",
-      category: "Event",
-      assignedTo: "Events Dept",
-      estimatedResolution: "Rejected - Insufficient Documentation",
-      documents: ["Event Plan", "Security Arrangements", "Insurance"],
-      requirements: ["Detailed Event Plan", "Security Contract", "Insurance Coverage", "Traffic Management Plan"],
-      comments: [
-        {
-          id: 3,
-          author: "Events Dept",
-          text: "Application rejected due to insufficient security documentation. Please resubmit with detailed security plan.",
-          date: "2024-01-15",
-          type: "official"
-        }
-      ]
-    },
-    {
-      id: 4,
-      title: "Signage Permit",
-      type: "Advertising Permit",
-      status: "pending",
-      applicationDate: "2024-02-01",
-      approvalDate: null,
-      fee: "$50",
-      description: "Permit for illuminated business sign with LED lighting",
-      category: "Permit",
-      assignedTo: "Planning Dept",
-      estimatedResolution: "1 week",
-      documents: ["Sign Design", "Electrical Certificate", "Property Owner Consent"],
-      requirements: ["Sign Design Approval", "Electrical Certificate", "Property Owner Consent", "Zoning Compliance"],
-      comments: []
+        const data = await businessApi.licenses.list(filters);
+        // Map API data to component format
+        const mappedApplications = data.map((license: any) => ({
+          id: license.id,
+          title: license.license_type,
+          type: license.license_type,
+          status: license.status,
+          applicationDate: license.created_at,
+          approvalDate: license.issue_date || null,
+          fee: "N/A", // Fee not in API yet
+          description: license.description || '',
+          category: "License",
+          assignedTo: "Business Licensing Dept", // Default
+          estimatedResolution: license.status === 'approved' ? 'Completed' : 
+                               license.status === 'rejected' ? 'Rejected' : 'Pending Review',
+          documents: [], // Not in API yet
+          requirements: [], // Not in API yet
+          comments: [], // Not in API yet
+          expiry_date: license.expiry_date,
+        }));
+        setApplications(mappedApplications);
+      } catch (err: any) {
+        console.error('Error fetching applications:', err);
+        setError(err.message || 'Failed to load applications');
+        setApplications([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (user) {
+      fetchApplications();
     }
-  ];
+  }, [user, filterStatus]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -175,7 +136,13 @@ export default function BusinessApplications() {
   });
 
   return (
-    <Layout userType="business" userName="Priya Singh" userEmail="priya.singh@email.com" showPortalNav={true}>
+    <ProtectedRoute allowedRoles={['business']}>
+      <Layout 
+        userType="business" 
+        userName={`${user?.firstName || ''} ${user?.lastName || ''}`} 
+        userEmail={user?.email || ''} 
+        showPortalNav={true}
+      >
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
           
@@ -191,12 +158,37 @@ export default function BusinessApplications() {
                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Business Applications</h1>
                 <p className="text-gray-600 dark:text-gray-300 mt-2">Track and manage your business applications and permits</p>
               </div>
-              <Button className="bg-[#003153] hover:bg-[#003153]/90">
+              <Button 
+                className="bg-[#003153] hover:bg-[#003153]/90"
+                onClick={() => {
+                  // TODO: Open create application dialog
+                  alert('Create application feature coming soon');
+                }}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Submit New Application
               </Button>
             </div>
           </motion.div>
+
+          {/* Error Message */}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+            >
+              <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+            </motion.div>
+          )}
+
+          {/* Loading State */}
+          {isLoading && (
+            <div className="text-center py-12">
+              <Clock3 className="h-12 w-12 text-gray-400 mx-auto mb-4 animate-spin" />
+              <p className="text-gray-600 dark:text-gray-400">Loading applications...</p>
+            </div>
+          )}
 
           {/* Filters and Search */}
           <motion.div
@@ -219,16 +211,16 @@ export default function BusinessApplications() {
                       />
                     </div>
                   </div>
-                  <Select value={filterStatus} onValueChange={(value: 'all' | 'pending' | 'approved' | 'rejected' | 'under_review') => setFilterStatus(value)}>
+                  <Select value={filterStatus} onValueChange={(value: 'all' | 'pending' | 'approved' | 'rejected' | 'expired') => setFilterStatus(value)}>
                     <SelectTrigger className="w-full sm:w-40">
                       <SelectValue placeholder="Filter by status" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Status</SelectItem>
                       <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="under_review">Under Review</SelectItem>
                       <SelectItem value="approved">Approved</SelectItem>
                       <SelectItem value="rejected">Rejected</SelectItem>
+                      <SelectItem value="expired">Expired</SelectItem>
                     </SelectContent>
                   </Select>
                   <Select value={sortBy} onValueChange={(value: 'date' | 'name' | 'status') => setSortBy(value)}>
@@ -247,12 +239,13 @@ export default function BusinessApplications() {
           </motion.div>
 
           {/* Applications List */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="space-y-6"
-          >
+          {!isLoading && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              className="space-y-6"
+            >
             {filteredApplications.map((application, index) => {
               const StatusIcon = getStatusIcon(application.status);
               return (
@@ -291,7 +284,7 @@ export default function BusinessApplications() {
                                 <div className="flex flex-col items-end gap-2 ml-4">
                                   <Badge className={`${getStatusColor(application.status)} text-xs px-3 py-1 flex items-center justify-center`}>
                                     <StatusIcon className="h-3 w-3 mr-1" />
-                                    {application.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                    {application.status.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
                                   </Badge>
                                   {application.approvalDate && (
                                     <span className="text-xs text-gray-500">
@@ -362,7 +355,7 @@ export default function BusinessApplications() {
                             <div>
                               <span className="font-medium text-gray-900 dark:text-white">Status:</span>
                               <Badge className={`${getStatusColor(application.status)} text-xs ml-2`}>
-                                {application.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                {application.status.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
                               </Badge>
                             </div>
                           </div>
@@ -390,7 +383,7 @@ export default function BusinessApplications() {
                         <div>
                           <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Required Documents</h4>
                           <ul className="list-disc list-inside text-gray-600 dark:text-gray-300 space-y-1">
-                            {application.documents.map((doc, index) => (
+                            {application.documents.map((doc: string, index: number) => (
                               <li key={index}>{doc}</li>
                             ))}
                           </ul>
@@ -400,7 +393,7 @@ export default function BusinessApplications() {
                         <div>
                           <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Requirements</h4>
                           <ul className="list-disc list-inside text-gray-600 dark:text-gray-300 space-y-1">
-                            {application.requirements.map((req, index) => (
+                            {application.requirements.map((req: string, index: number) => (
                               <li key={index}>{req}</li>
                             ))}
                           </ul>
@@ -411,7 +404,7 @@ export default function BusinessApplications() {
                           <div>
                             <h4 className="font-semibold text-gray-900 dark:text-white mb-3">Comments & Updates</h4>
                             <div className="space-y-3">
-                              {application.comments.map((comment) => (
+                              {application.comments.map((comment: any) => (
                                 <div key={comment.id} className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
                                   <div className="flex items-start justify-between mb-2">
                                     <span className="font-medium text-sm text-gray-900 dark:text-white">{comment.author}</span>
@@ -459,10 +452,11 @@ export default function BusinessApplications() {
                 </motion.div>
               );
             })}
-          </motion.div>
+            </motion.div>
+          )}
 
           {/* Empty State */}
-          {filteredApplications.length === 0 && (
+          {!isLoading && filteredApplications.length === 0 && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -484,6 +478,7 @@ export default function BusinessApplications() {
           )}
         </div>
       </div>
-    </Layout>
+      </Layout>
+    </ProtectedRoute>
   );
 }

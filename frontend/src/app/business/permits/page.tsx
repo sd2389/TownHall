@@ -35,76 +35,62 @@ import {
   Shield
 } from "lucide-react";
 import Layout from "@/components/layout/Layout";
-import React, { useState } from "react";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { useAuth } from "@/contexts/AuthContext";
+import { businessApi } from "@/lib/api";
+import React, { useState, useEffect } from "react";
 
 export default function BusinessPermits() {
+  const { user } = useAuth();
   const [selectedPermit, setSelectedPermit] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<'all' | 'approved' | 'pending' | 'rejected' | 'expired'>('all');
   const [sortBy, setSortBy] = useState<'name' | 'date' | 'status'>('date');
+  const [permits, setPermits] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const permits = [
-    {
-      id: 1,
-      name: "Outdoor Seating Permit",
-      type: "Special Use Permit",
-      status: "approved",
-      applicationDate: "2024-01-15",
-      approvalDate: "2024-01-22",
-      expiryDate: "2024-12-31",
-      fee: "$75",
-      description: "Permit for outdoor dining area with 20 seats",
-      location: "123 Main Street, Downtown",
-      requirements: ["Site Plan", "Safety Certificate", "Neighbor Consent", "Insurance Coverage"],
-      documents: ["Site Plan Drawing", "Safety Inspection Report", "Neighbor Consent Forms", "Insurance Policy"],
-      conditions: ["Maximum 20 seats", "Noise restrictions after 10 PM", "Regular safety inspections"]
-    },
-    {
-      id: 2,
-      name: "Signage Permit",
-      type: "Advertising Permit",
-      status: "pending",
-      applicationDate: "2024-02-01",
-      approvalDate: null,
-      expiryDate: "2025-02-01",
-      fee: "$50",
-      description: "Permit for illuminated business sign",
-      location: "123 Main Street, Downtown",
-      requirements: ["Sign Design", "Electrical Certificate", "Property Owner Consent"],
-      documents: ["Sign Design Drawing", "Electrical Certificate", "Property Consent Form"],
-      conditions: ["Maximum 4ft x 8ft size", "No flashing lights", "Compliance with zoning"]
-    },
-    {
-      id: 3,
-      name: "Event Permit - Community Festival",
-      type: "Special Event Permit",
-      status: "rejected",
-      applicationDate: "2024-01-10",
-      approvalDate: null,
-      expiryDate: null,
-      fee: "$200",
-      description: "Permit for annual community festival",
-      location: "Downtown Plaza",
-      requirements: ["Event Plan", "Security Arrangements", "Insurance", "Traffic Management"],
-      documents: ["Event Plan", "Security Contract", "Insurance Policy", "Traffic Plan"],
-      conditions: ["Maximum 500 attendees", "Security required", "Cleanup within 24 hours"]
-    },
-    {
-      id: 4,
-      name: "Parking Permit",
-      type: "Parking Permit",
-      status: "expired",
-      applicationDate: "2023-06-01",
-      approvalDate: "2023-06-05",
-      expiryDate: "2024-01-01",
-      fee: "$100",
-      description: "Permit for employee parking spaces",
-      location: "Municipal Parking Lot B",
-      requirements: ["Business Registration", "Employee List", "Parking Agreement"],
-      documents: ["Business Registration", "Employee Roster", "Parking Agreement"],
-      conditions: ["5 spaces maximum", "Employee use only", "Annual renewal required"]
+  // Fetch permits from API (using licenses API as permits are licenses)
+  useEffect(() => {
+    const fetchPermits = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const filters: any = {};
+        if (filterStatus !== 'all') {
+          filters.status = filterStatus;
+        }
+        const data = await businessApi.licenses.list(filters);
+        // Map API data to component format
+        const mappedPermits = data.map((license: any) => ({
+          id: license.id,
+          name: license.license_type,
+          type: license.license_type,
+          status: license.status,
+          applicationDate: license.created_at,
+          approvalDate: license.issue_date || null,
+          expiryDate: license.expiry_date || null,
+          fee: "N/A", // Fee not in API yet
+          description: license.description || '',
+          location: "", // Not in API yet
+          requirements: [], // Not in API yet
+          documents: [], // Not in API yet
+          conditions: [] // Not in API yet
+        }));
+        setPermits(mappedPermits);
+      } catch (err: any) {
+        console.error('Error fetching permits:', err);
+        setError(err.message || 'Failed to load permits');
+        setPermits([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (user) {
+      fetchPermits();
     }
-  ];
+  }, [user, filterStatus]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -144,7 +130,13 @@ export default function BusinessPermits() {
   });
 
   return (
-    <Layout userType="business" userName="Priya Singh" userEmail="priya.singh@email.com" showPortalNav={true}>
+    <ProtectedRoute allowedRoles={['business']}>
+      <Layout 
+        userType="business" 
+        userName={`${user?.firstName || ''} ${user?.lastName || ''}`} 
+        userEmail={user?.email || ''} 
+        showPortalNav={true}
+      >
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
           
@@ -166,6 +158,25 @@ export default function BusinessPermits() {
               </Button>
             </div>
           </motion.div>
+
+          {/* Error Message */}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+            >
+              <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+            </motion.div>
+          )}
+
+          {/* Loading State */}
+          {isLoading && (
+            <div className="text-center py-12">
+              <Clock3 className="h-12 w-12 text-gray-400 mx-auto mb-4 animate-spin" />
+              <p className="text-gray-600 dark:text-gray-400">Loading permits...</p>
+            </div>
+          )}
 
           {/* Filters and Search */}
           <motion.div
@@ -216,13 +227,14 @@ export default function BusinessPermits() {
           </motion.div>
 
           {/* Permits Grid */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-          >
-            {filteredPermits.map((permit, index) => {
+          {!isLoading && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            >
+              {filteredPermits.map((permit, index) => {
               const StatusIcon = getStatusIcon(permit.status);
               return (
                 <motion.div
@@ -409,11 +421,12 @@ export default function BusinessPermits() {
                   </Dialog>
                 </motion.div>
               );
-            })}
-          </motion.div>
+              })}
+            </motion.div>
+          )}
 
           {/* Empty State */}
-          {filteredPermits.length === 0 && (
+          {!isLoading && filteredPermits.length === 0 && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -435,6 +448,7 @@ export default function BusinessPermits() {
           )}
         </div>
       </div>
-    </Layout>
+      </Layout>
+    </ProtectedRoute>
   );
 }

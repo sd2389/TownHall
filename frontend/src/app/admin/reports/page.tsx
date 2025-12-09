@@ -1,14 +1,14 @@
 "use client";
 
 import AdminLayout from "@/components/layout/AdminLayout";
-import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import AdminProtectedRoute from "@/components/auth/AdminProtectedRoute";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FileText, Download, Calendar, TrendingUp, Users, CheckCircle, Clock } from "lucide-react";
 
 export default function AdminReports() {
   return (
-    <ProtectedRoute allowedRoles={['government', 'superuser']}>
+    <AdminProtectedRoute>
       <AdminLayout currentPage="reports">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
@@ -174,7 +174,7 @@ export default function AdminReports() {
           </Card>
         </div>
       </AdminLayout>
-    </ProtectedRoute>
+    </AdminProtectedRoute>
   );
 }
 

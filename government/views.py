@@ -8,29 +8,41 @@ from citizen.models import CitizenProfile
 from django.db.models import Q
 from django.utils import timezone
 from .utils import get_user_town, filter_by_town
+from towns.models import Town
 
 
-@api_view(['GET'])
+@api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
 def list_departments_view(request):
-    """List all active departments (public endpoint for signup)"""
-    try:
-        departments = Department.objects.all().order_by('name')
-        data = [
-            {
-                'id': dept.id,
-                'name': dept.name,
-                'description': dept.description,
-                'contact_email': dept.contact_email,
-                'contact_phone': dept.contact_phone,
-            }
-            for dept in departments
-        ]
-        return Response(data, status=status.HTTP_200_OK)
-    except Exception as e:
-        return Response({
-            'error': f'An error occurred: {str(e)}'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    """List departments (GET) or create department (POST)"""
+    if request.method == 'GET':
+        try:
+            departments = Department.objects.all().order_by('name')
+            data = [
+                {
+                    'id': dept.id,
+                    'name': dept.name,
+                    'description': dept.description,
+                    'contact_email': dept.contact_email,
+                    'contact_phone': dept.contact_phone,
+                }
+                for dept in departments
+            ]
+            return Response(data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                'error': f'An error occurred: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    elif request.method == 'POST':
+        # Create department - requires authentication
+        if not request.user.is_authenticated:
+            return Response({
+                'error': 'Authentication required'
+            }, status=status.HTTP_401_UNAUTHORIZED)
+        
+        # Use create_department_view logic
+        return create_department_view(request)
 
 
 @api_view(['GET'])
@@ -200,10 +212,10 @@ def create_position_view(request):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(['PUT', 'PATCH'])
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def update_department_view(request, department_id):
-    """Update a department (admin or superuser only)"""
+    """Get (GET), update (PUT/PATCH), or delete (DELETE) a department"""
     try:
         # Check if user is superuser or admin
         is_superuser = request.user.is_superuser
@@ -214,11 +226,11 @@ def update_department_view(request, department_id):
                 profile = UserProfile.objects.get(user=request.user)
                 if profile.role != 'government':
                     return Response({
-                        'error': 'Only administrators can update departments'
+                        'error': 'Only administrators can manage departments'
                     }, status=status.HTTP_403_FORBIDDEN)
             except UserProfile.DoesNotExist:
                 return Response({
-                    'error': 'User profile not found. Only administrators can update departments.'
+                    'error': 'User profile not found. Only administrators can manage departments.'
                 }, status=status.HTTP_403_FORBIDDEN)
         
         # Get department
@@ -229,80 +241,56 @@ def update_department_view(request, department_id):
                 'error': 'Department not found'
             }, status=status.HTTP_404_NOT_FOUND)
         
-        # Update fields
-        if 'name' in request.data:
-            name = request.data.get('name', '').strip()
-            if name and name != department.name:
-                # Check if another department with this name exists
-                if Department.objects.filter(name__iexact=name).exclude(id=department_id).exists():
-                    return Response({
-                        'error': 'A department with this name already exists'
-                    }, status=status.HTTP_400_BAD_REQUEST)
-                department.name = name
-        
-        if 'description' in request.data:
-            department.description = request.data.get('description', '').strip()
-        
-        if 'contact_email' in request.data:
-            department.contact_email = request.data.get('contact_email', '').strip()
-        
-        if 'contact_phone' in request.data:
-            department.contact_phone = request.data.get('contact_phone', '').strip()
-        
-        department.save()
-        
-        return Response({
-            'message': 'Department updated successfully',
-            'department': {
+        if request.method == 'GET':
+            # Get department details
+            return Response({
                 'id': department.id,
                 'name': department.name,
                 'description': department.description,
                 'contact_email': department.contact_email,
                 'contact_phone': department.contact_phone,
-            }
-        }, status=status.HTTP_200_OK)
+            }, status=status.HTTP_200_OK)
         
-    except Exception as e:
-        return Response({
-            'error': f'An error occurred: {str(e)}'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@api_view(['DELETE'])
-@permission_classes([IsAuthenticated])
-def delete_department_view(request, department_id):
-    """Delete a department (admin or superuser only)"""
-    try:
-        # Check if user is superuser or admin
-        is_superuser = request.user.is_superuser
-        
-        # For non-superusers, check if they are government officials
-        if not is_superuser:
-            try:
-                profile = UserProfile.objects.get(user=request.user)
-                if profile.role != 'government':
-                    return Response({
-                        'error': 'Only administrators can delete departments'
-                    }, status=status.HTTP_403_FORBIDDEN)
-            except UserProfile.DoesNotExist:
-                return Response({
-                    'error': 'User profile not found. Only administrators can delete departments.'
-                }, status=status.HTTP_403_FORBIDDEN)
-        
-        # Get department
-        try:
-            department = Department.objects.get(id=department_id)
-        except Department.DoesNotExist:
+        elif request.method == 'DELETE':
+            # Delete department
+            department.delete()
             return Response({
-                'error': 'Department not found'
-            }, status=status.HTTP_404_NOT_FOUND)
+                'message': 'Department deleted successfully'
+            }, status=status.HTTP_204_NO_CONTENT)
         
-        # Delete department
-        department.delete()
-        
-        return Response({
-            'message': 'Department deleted successfully'
-        }, status=status.HTTP_200_OK)
+        elif request.method in ['PUT', 'PATCH']:
+            # Update fields
+            if 'name' in request.data:
+                name = request.data.get('name', '').strip()
+                if name and name != department.name:
+                    # Check if another department with this name exists
+                    if Department.objects.filter(name__iexact=name).exclude(id=department_id).exists():
+                        return Response({
+                            'error': 'A department with this name already exists'
+                        }, status=status.HTTP_400_BAD_REQUEST)
+                    department.name = name
+            
+            if 'description' in request.data:
+                department.description = request.data.get('description', '').strip()
+            
+            if 'contact_email' in request.data:
+                department.contact_email = request.data.get('contact_email', '').strip()
+            
+            if 'contact_phone' in request.data:
+                department.contact_phone = request.data.get('contact_phone', '').strip()
+            
+            department.save()
+            
+            return Response({
+                'message': 'Department updated successfully',
+                'department': {
+                    'id': department.id,
+                    'name': department.name,
+                    'description': department.description,
+                    'contact_email': department.contact_email,
+                    'contact_phone': department.contact_phone,
+                }
+            }, status=status.HTTP_200_OK)
         
     except Exception as e:
         return Response({
@@ -310,85 +298,80 @@ def delete_department_view(request, department_id):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(['GET'])
+
+
+@api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def list_announcements_view(request):
-    """List announcements filtered by user's town"""
-    try:
-        # Get user's town
-        user_town = get_user_town(request.user)
-        
-        # Start with all announcements
-        announcements = Announcement.objects.all()
-        
-        # Debug: Log user and town info
+    """List announcements (GET) or create announcement (POST)"""
+    if request.method == 'GET':
         try:
-            profile = UserProfile.objects.get(user=request.user)
-            user_town_from_profile = profile.town
-        except UserProfile.DoesNotExist:
-            user_town_from_profile = None
-        
-        # Filter by town - only if user has a town
-        if user_town:
-            # Filter by town ID to ensure exact match
-            announcements = announcements.filter(town_id=user_town.id)
-        elif not request.user.is_superuser:
-            # If user has no town and is not superuser, return empty
-            announcements = announcements.none()
-        
-        # Apply status filter
-        status_filter = request.query_params.get('status', None)
-        if status_filter:
-            if status_filter == 'published':
-                announcements = announcements.filter(is_published=True)
-            elif status_filter == 'draft':
-                announcements = announcements.filter(is_published=False)
-        
-        type_filter = request.query_params.get('type', None)
-        if type_filter and type_filter != 'all':
-            announcements = announcements.filter(type=type_filter)
-        
-        # Order by created_at descending
-        announcements = announcements.select_related('town', 'department', 'created_by', 'created_by__user').prefetch_related('questions').order_by('-created_at')
-        
-        data = []
-        for announcement in announcements:
-            # Get question counts - use len() with prefetch_related for better performance
-            # prefetch_related loads all questions, so we can use len() instead of count()
-            questions_list = list(announcement.questions.all())
-            total_questions = len(questions_list)
-            answered_questions = sum(1 for q in questions_list if q.is_answered)
-            pending_questions = total_questions - answered_questions
+            # Get user's town
+            user_town = get_user_town(request.user)
             
-            data.append({
-                'id': announcement.id,
-                'title': announcement.title,
-                'description': announcement.description or announcement.content[:200],
-                'content': announcement.content,
-                'date': announcement.created_at.strftime('%Y-%m-%d'),
-                'priority': announcement.priority,
-                'type': announcement.type,
-                'status': 'published' if announcement.is_published else 'draft',
-                'views': announcement.views,
-                'author': announcement.created_by.user.get_full_name() or announcement.created_by.user.username,
-                'department': announcement.department.name,
-                'tags': announcement.tags or [],
-                'lastUpdated': announcement.updated_at.strftime('%Y-%m-%d'),
-                'publishDate': announcement.published_at.strftime('%Y-%m-%d') if announcement.published_at else None,
-                'expiryDate': announcement.expiry_date.strftime('%Y-%m-%d') if announcement.expiry_date else None,
-                'town_id': announcement.town.id if announcement.town else None,
-                'town_name': announcement.town.name if announcement.town else None,
-                'is_published': announcement.is_published,
-                'question_count': total_questions,
-                'answered_count': answered_questions,
-                'pending_count': pending_questions,
-            })
-        
-        return Response(data, status=status.HTTP_200_OK)
-    except Exception as e:
-        return Response({
-            'error': f'An error occurred: {str(e)}'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            # Start with all announcements
+            announcements = Announcement.objects.all()
+            
+            # Filter by town - only if user has a town
+            if user_town:
+                announcements = announcements.filter(town_id=user_town.id)
+            elif not request.user.is_superuser:
+                announcements = announcements.none()
+            
+            # Apply status filter
+            status_filter = request.query_params.get('status', None)
+            if status_filter:
+                if status_filter == 'published':
+                    announcements = announcements.filter(is_published=True)
+                elif status_filter == 'draft':
+                    announcements = announcements.filter(is_published=False)
+            
+            type_filter = request.query_params.get('type', None)
+            if type_filter and type_filter != 'all':
+                announcements = announcements.filter(type=type_filter)
+            
+            announcements = announcements.select_related('town', 'department', 'created_by', 'created_by__user').prefetch_related('questions').order_by('-created_at')
+            
+            data = []
+            for announcement in announcements:
+                questions_list = list(announcement.questions.all())
+                total_questions = len(questions_list)
+                answered_questions = sum(1 for q in questions_list if q.is_answered)
+                pending_questions = total_questions - answered_questions
+                
+                data.append({
+                    'id': announcement.id,
+                    'title': announcement.title,
+                    'description': announcement.description or announcement.content[:200],
+                    'content': announcement.content,
+                    'date': announcement.created_at.strftime('%Y-%m-%d'),
+                    'priority': announcement.priority,
+                    'type': announcement.type,
+                    'status': 'published' if announcement.is_published else 'draft',
+                    'views': announcement.views,
+                    'author': announcement.created_by.user.get_full_name() or announcement.created_by.user.username,
+                    'department': announcement.department.name,
+                    'tags': announcement.tags or [],
+                    'lastUpdated': announcement.updated_at.strftime('%Y-%m-%d'),
+                    'publishDate': announcement.published_at.strftime('%Y-%m-%d') if announcement.published_at else None,
+                    'expiryDate': announcement.expiry_date.strftime('%Y-%m-%d') if announcement.expiry_date else None,
+                    'town_id': announcement.town.id if announcement.town else None,
+                    'town_name': announcement.town.name if announcement.town else None,
+                    'is_published': announcement.is_published,
+                    'question_count': total_questions,
+                    'answered_count': answered_questions,
+                    'pending_count': pending_questions,
+                })
+            
+            return Response(data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                'error': f'An error occurred: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    elif request.method == 'POST':
+        # Create announcement - use create_announcement_view logic
+        return create_announcement_view(request)
 
 
 @api_view(['POST'])
@@ -498,10 +481,10 @@ def create_announcement_view(request):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(['PUT', 'PATCH'])
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def update_announcement_view(request, announcement_id):
-    """Update an announcement"""
+    """Get (GET), update (PUT/PATCH), or delete (DELETE) an announcement"""
     try:
         # Get announcement
         try:
@@ -514,40 +497,20 @@ def update_announcement_view(request, announcement_id):
         # Check permissions - must be creator or superuser
         if not request.user.is_superuser and announcement.created_by.user != request.user:
             return Response({
-                'error': 'You do not have permission to update this announcement'
+                'error': 'You do not have permission to manage this announcement'
             }, status=status.HTTP_403_FORBIDDEN)
         
         # Check town access
         town = get_user_town(request.user)
         if not request.user.is_superuser and announcement.town != town:
             return Response({
-                'error': 'You can only update announcements from your town'
+                'error': 'You can only manage announcements from your town'
             }, status=status.HTTP_403_FORBIDDEN)
         
-        # Update fields
-        if 'title' in request.data:
-            announcement.title = request.data.get('title', '').strip()
-        if 'content' in request.data:
-            announcement.content = request.data.get('content', '').strip()
-        if 'description' in request.data:
-            announcement.description = request.data.get('description', '').strip()
-        if 'priority' in request.data:
-            announcement.priority = request.data.get('priority', 'medium')
-        if 'type' in request.data:
-            announcement.type = request.data.get('type', 'alert')
-        if 'tags' in request.data:
-            announcement.tags = request.data.get('tags', [])
-        if 'is_published' in request.data:
-            is_published = request.data.get('is_published', False)
-            if is_published and not announcement.is_published:
-                announcement.published_at = timezone.now()
-            announcement.is_published = is_published
-        
-        announcement.save()
-        
-        return Response({
-            'message': 'Announcement updated successfully',
-            'announcement': {
+        if request.method == 'GET':
+            # Get announcement details
+            questions_list = list(announcement.questions.all())
+            return Response({
                 'id': announcement.id,
                 'title': announcement.title,
                 'description': announcement.description,
@@ -556,8 +519,51 @@ def update_announcement_view(request, announcement_id):
                 'priority': announcement.priority,
                 'type': announcement.type,
                 'status': 'published' if announcement.is_published else 'draft',
-            }
-        }, status=status.HTTP_200_OK)
+                'question_count': len(questions_list),
+            }, status=status.HTTP_200_OK)
+        
+        elif request.method == 'DELETE':
+            # Delete announcement
+            announcement.delete()
+            return Response({
+                'message': 'Announcement deleted successfully'
+            }, status=status.HTTP_204_NO_CONTENT)
+        
+        elif request.method in ['PUT', 'PATCH']:
+            # Update fields
+            if 'title' in request.data:
+                announcement.title = request.data.get('title', '').strip()
+            if 'content' in request.data:
+                announcement.content = request.data.get('content', '').strip()
+            if 'description' in request.data:
+                announcement.description = request.data.get('description', '').strip()
+            if 'priority' in request.data:
+                announcement.priority = request.data.get('priority', 'medium')
+            if 'type' in request.data:
+                announcement.type = request.data.get('type', 'alert')
+            if 'tags' in request.data:
+                announcement.tags = request.data.get('tags', [])
+            if 'is_published' in request.data:
+                is_published = request.data.get('is_published', False)
+                if is_published and not announcement.is_published:
+                    announcement.published_at = timezone.now()
+                announcement.is_published = is_published
+            
+            announcement.save()
+            
+            return Response({
+                'message': 'Announcement updated successfully',
+                'announcement': {
+                    'id': announcement.id,
+                    'title': announcement.title,
+                    'description': announcement.description,
+                    'content': announcement.content,
+                    'date': announcement.created_at.strftime('%Y-%m-%d'),
+                    'priority': announcement.priority,
+                    'type': announcement.type,
+                    'status': 'published' if announcement.is_published else 'draft',
+                }
+            }, status=status.HTTP_200_OK)
         
     except Exception as e:
         return Response({
@@ -565,45 +571,7 @@ def update_announcement_view(request, announcement_id):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(['DELETE'])
-@permission_classes([IsAuthenticated])
-def delete_announcement_view(request, announcement_id):
-    """Delete an announcement"""
-    try:
-        # Get announcement
-        try:
-            announcement = Announcement.objects.get(id=announcement_id)
-        except Announcement.DoesNotExist:
-            return Response({
-                'error': 'Announcement not found'
-            }, status=status.HTTP_404_NOT_FOUND)
-        
-        # Check permissions
-        if not request.user.is_superuser and announcement.created_by.user != request.user:
-            return Response({
-                'error': 'You do not have permission to delete this announcement'
-            }, status=status.HTTP_403_FORBIDDEN)
-        
-        # Check town access
-        town = get_user_town(request.user)
-        if not request.user.is_superuser and announcement.town != town:
-            return Response({
-                'error': 'You can only delete announcements from your town'
-            }, status=status.HTTP_403_FORBIDDEN)
-        
-        announcement.delete()
-        
-        return Response({
-            'message': 'Announcement deleted successfully'
-        }, status=status.HTTP_200_OK)
-        
-    except Exception as e:
-        return Response({
-            'error': f'An error occurred: {str(e)}'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@api_view(['GET'])
+@api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def list_announcement_questions_view(request, announcement_id):
     """List all questions for a specific announcement"""
@@ -710,8 +678,8 @@ def create_announcement_question_view(request, announcement_id):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def answer_announcement_question_view(request, question_id):
-    """Answer a question for an announcement (government officials only)"""
+def answer_announcement_question_view(request, announcement_id, question_id):
+    """Answer a question for an announcement - POST /announcements/<id>/questions/<id>/answers/"""
     try:
         # Get question
         try:
@@ -771,6 +739,102 @@ def answer_announcement_question_view(request, question_id):
                 'is_answered': question.is_answered,
                 'answered_by': official.user.get_full_name() or official.user.username,
                 'answered_at': question.answered_at.strftime('%Y-%m-%d %H:%M'),
+            }
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({
+            'error': f'An error occurred: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_government_officials_view(request):
+    """List all government officials (admin/superuser only)"""
+    try:
+        # Only superusers can access this endpoint
+        if not request.user.is_superuser:
+            return Response({
+                'error': 'Only administrators can view government officials'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        officials = GovernmentOfficial.objects.select_related('user', 'town').all().order_by('-created_at')
+        
+        data = []
+        for official in officials:
+            try:
+                profile = UserProfile.objects.get(user=official.user)
+                data.append({
+                    'id': official.id,
+                    'user_id': official.user.id,
+                    'email': official.user.email,
+                    'first_name': official.user.first_name,
+                    'last_name': official.user.last_name,
+                    'employee_id': official.employee_id,
+                    'department': official.department,
+                    'position': official.position,
+                    'phone_number': official.phone_number,
+                    'office_address': official.office_address,
+                    'town': {
+                        'id': official.town.id,
+                        'name': official.town.name,
+                        'state': official.town.state
+                    } if official.town else None,
+                    'can_view_users': official.can_view_users,
+                    'can_approve_users': official.can_approve_users,
+                    'is_approved': profile.is_approved,
+                    'created_at': official.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    'updated_at': official.updated_at.strftime('%Y-%m-%d %H:%M:%S'),
+                })
+            except UserProfile.DoesNotExist:
+                # Skip officials without user profiles
+                continue
+        
+        return Response(data, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({
+            'error': f'An error occurred: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['PUT', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def update_government_official_permissions_view(request, official_id):
+    """Update government official permissions (admin/superuser only)"""
+    try:
+        # Only superusers can access this endpoint
+        if not request.user.is_superuser:
+            return Response({
+                'error': 'Only administrators can update government official permissions'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        try:
+            official = GovernmentOfficial.objects.get(id=official_id)
+        except GovernmentOfficial.DoesNotExist:
+            return Response({
+                'error': 'Government official not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Update permissions
+        can_view_users = request.data.get('can_view_users')
+        can_approve_users = request.data.get('can_approve_users')
+        
+        if can_view_users is not None:
+            official.can_view_users = bool(can_view_users)
+        if can_approve_users is not None:
+            official.can_approve_users = bool(can_approve_users)
+        
+        official.save()
+        
+        return Response({
+            'message': 'Permissions updated successfully',
+            'official': {
+                'id': official.id,
+                'email': official.user.email,
+                'can_view_users': official.can_view_users,
+                'can_approve_users': official.can_approve_users,
             }
         }, status=status.HTTP_200_OK)
         

@@ -1,14 +1,29 @@
 from django.urls import path
-from . import views
+from . import (
+    views_complaints,
+    views_comments,
+    views_notifications,
+)
 
 urlpatterns = [
-    path('complaints/', views.list_complaints_view, name='list_complaints'),
-    path('complaints/create/', views.create_complaint_view, name='create_complaint'),
-    path('complaints/<int:complaint_id>/', views.update_complaint_view, name='update_complaint'),
-    path('complaints/<int:complaint_id>/comments/', views.add_complaint_comment_view, name='add_complaint_comment'),
-    path('complaints/<int:complaint_id>/notify/', views.notify_citizen_view, name='notify_citizen'),
-    path('notifications/', views.list_notifications_view, name='list_notifications'),
-    path('notifications/<int:notification_id>/read/', views.mark_notification_read_view, name='mark_notification_read'),
+    # Complaints - RESTful
+    # GET /citizen/complaints/ - List complaints
+    # POST /citizen/complaints/ - Create complaint
+    # PATCH/PUT /citizen/complaints/<id>/ - Update complaint
+    path('complaints/', views_complaints.list_complaints_view, name='complaints_list'),
+    path('complaints/<int:complaint_id>/', views_complaints.update_complaint_view, name='complaint_detail'),
+    
+    # Comments - RESTful
+    # POST /citizen/complaints/<id>/comments/ - Add comment
+    path('complaints/<int:complaint_id>/comments/', views_comments.add_complaint_comment_view, name='complaint_comments_create'),
+    
+    # Notifications - RESTful
+    # GET /citizen/notifications/ - List notifications
+    # PATCH /citizen/notifications/<id>/ - Mark notification as read
+    # POST /citizen/complaints/<id>/notifications/ - Notify citizen
+    path('notifications/', views_notifications.list_notifications_view, name='notifications_list'),
+    path('notifications/<int:notification_id>/', views_notifications.mark_notification_read_view, name='notification_detail'),
+    path('complaints/<int:complaint_id>/notifications/', views_notifications.notify_citizen_view, name='complaint_notifications_create'),
 ]
 
 

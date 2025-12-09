@@ -32,64 +32,59 @@ import {
   SortDesc
 } from "lucide-react";
 import Layout from "@/components/layout/Layout";
-import React, { useState } from "react";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { useAuth } from "@/contexts/AuthContext";
+import { businessApi } from "@/lib/api";
+import React, { useState, useEffect } from "react";
 
 export default function BusinessLicenses() {
+  const { user } = useAuth();
   const [selectedLicense, setSelectedLicense] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'expired' | 'pending'>('all');
   const [sortBy, setSortBy] = useState<'name' | 'expiry' | 'status'>('name');
+  const [licenses, setLicenses] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const licenses = [
-    {
-      id: 1,
-      name: "Business License - Priya's Café",
-      type: "General Business License",
-      status: "active",
-      issueDate: "2024-01-15",
-      expiryDate: "2025-01-15",
-      fee: "$150",
-      description: "Primary business license for food service operations",
-      requirements: ["Health Certificate", "Fire Safety Certificate", "Insurance Proof"],
-      documents: ["Business Registration", "Tax Certificate", "Insurance Policy"]
-    },
-    {
-      id: 2,
-      name: "Food Service License",
-      type: "Health Department License",
-      status: "active",
-      issueDate: "2024-01-20",
-      expiryDate: "2024-07-20",
-      fee: "$75",
-      description: "License for food preparation and service",
-      requirements: ["Food Handler Certificate", "Kitchen Inspection", "Health Department Approval"],
-      documents: ["Food Handler Certificate", "Kitchen Inspection Report", "Health Certificate"]
-    },
-    {
-      id: 3,
-      name: "Liquor License",
-      type: "Alcohol Service License",
-      status: "pending",
-      issueDate: "2024-02-01",
-      expiryDate: "2025-02-01",
-      fee: "$300",
-      description: "License for serving alcoholic beverages",
-      requirements: ["Background Check", "Training Certificate", "Insurance Coverage"],
-      documents: ["Background Check Report", "Training Certificate", "Insurance Policy"]
-    },
-    {
-      id: 4,
-      name: "Outdoor Seating License",
-      type: "Special Use License",
-      status: "expired",
-      issueDate: "2023-06-01",
-      expiryDate: "2024-01-01",
-      fee: "$100",
-      description: "License for outdoor dining area",
-      requirements: ["Site Plan Approval", "Neighbor Consent", "Safety Inspection"],
-      documents: ["Site Plan", "Neighbor Consent Forms", "Safety Inspection Report"]
+  // Fetch licenses from API
+  useEffect(() => {
+    const fetchLicenses = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const filters: any = {};
+        if (filterStatus !== 'all') {
+          filters.status = filterStatus === 'active' ? 'approved' : filterStatus;
+        }
+        const data = await businessApi.licenses.list(filters);
+        // Map API data to component format
+        const mappedLicenses = data.map((license: any) => ({
+          id: license.id,
+          name: license.license_type,
+          type: license.license_type,
+          status: license.status === 'approved' ? 'active' : license.status,
+          issueDate: license.issue_date || license.created_at,
+          expiryDate: license.expiry_date || null,
+          fee: "N/A", // Fee not in API yet
+          description: license.description || '',
+          requirements: [], // Not in API yet
+          documents: [] // Not in API yet
+        }));
+        setLicenses(mappedLicenses);
+      } catch (err: any) {
+        console.error('Error fetching licenses:', err);
+        setError(err.message || 'Failed to load licenses');
+        setLicenses([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (user) {
+      fetchLicenses();
     }
-  ];
+  }, [user, filterStatus]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -125,7 +120,13 @@ export default function BusinessLicenses() {
   });
 
   return (
-    <Layout userType="business" userName="Priya Singh" userEmail="priya.singh@email.com" showPortalNav={true}>
+    <ProtectedRoute allowedRoles={['business']}>
+      <Layout 
+        userType="business" 
+        userName={`${user?.firstName || ''} ${user?.lastName || ''}`} 
+        userEmail={user?.email || ''} 
+        showPortalNav={true}
+      >
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
           
@@ -147,6 +148,25 @@ export default function BusinessLicenses() {
               </Button>
             </div>
           </motion.div>
+
+          {/* Error Message */}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+            >
+              <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+            </motion.div>
+          )}
+
+          {/* Loading State */}
+          {isLoading && (
+            <div className="text-center py-12">
+              <Clock3 className="h-12 w-12 text-gray-400 mx-auto mb-4 animate-spin" />
+              <p className="text-gray-600 dark:text-gray-400">Loading licenses...</p>
+            </div>
+          )}
 
           {/* Filters and Search */}
           <motion.div
@@ -196,13 +216,14 @@ export default function BusinessLicenses() {
           </motion.div>
 
           {/* Licenses Grid */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-          >
-            {filteredLicenses.map((license, index) => {
+          {!isLoading && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            >
+              {filteredLicenses.map((license, index) => {
               const StatusIcon = getStatusIcon(license.status);
               return (
                 <motion.div
@@ -347,11 +368,12 @@ export default function BusinessLicenses() {
                   </Dialog>
                 </motion.div>
               );
-            })}
-          </motion.div>
+              })}
+            </motion.div>
+          )}
 
           {/* Empty State */}
-          {filteredLicenses.length === 0 && (
+          {!isLoading && filteredLicenses.length === 0 && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -373,6 +395,7 @@ export default function BusinessLicenses() {
           )}
         </div>
       </div>
-    </Layout>
+      </Layout>
+    </ProtectedRoute>
   );
 }

@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Layout from "@/components/layout/Layout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -119,33 +120,33 @@ export default function GovernmentPortal() {
       title: "Create Announcement",
       description: "Broadcast important updates",
       icon: Megaphone,
-      color: "bg-slate-700",
-      hoverColor: "hover:bg-slate-800",
+      color: "bg-[#003153]",
+      hoverColor: "hover:bg-[#003153]/90",
       href: "/government/announcements"
     },
     {
       title: "Review Complaints",
       description: "Address citizen concerns",
       icon: FileText,
-      color: "bg-red-600",
-      hoverColor: "hover:bg-red-700",
+      color: "bg-[#003153]",
+      hoverColor: "hover:bg-[#003153]/90",
       href: "/government/complaints"
+    },
+    {
+      title: "Approve Users",
+      description: "Review and approve accounts",
+      icon: UserCheck,
+      color: "bg-[#003153]",
+      hoverColor: "hover:bg-[#003153]/90",
+      href: "/government/users"
     },
     {
       title: "Generate Report",
       description: "Create analytical reports",
       icon: FileBarChart,
-      color: "bg-teal-600",
-      hoverColor: "hover:bg-teal-700",
+      color: "bg-[#003153]",
+      hoverColor: "hover:bg-[#003153]/90",
       href: "/government/reports"
-    },
-    {
-      title: "Manage Applications",
-      description: "Process business requests",
-      icon: ClipboardList,
-      color: "bg-blue-600",
-      hoverColor: "hover:bg-blue-700",
-      href: "/government/applications"
     }
   ];
 
@@ -212,26 +213,41 @@ export default function GovernmentPortal() {
   });
 
   const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "High": return "bg-red-600 text-white";
-      case "Medium": return "bg-yellow-500 text-white";
-      case "Low": return "bg-green-600 text-white";
-      default: return "bg-gray-600 text-white";
+    switch (priority?.toLowerCase()) {
+      case "high":
+      case "urgent":
+        return "bg-red-600 text-white dark:bg-red-700 dark:text-white";
+      case "medium":
+        return "bg-yellow-500 text-white dark:bg-yellow-600 dark:text-white";
+      case "low":
+        return "bg-green-600 text-white dark:bg-green-700 dark:text-white";
+      default:
+        return "bg-gray-500 text-white dark:bg-gray-600 dark:text-white";
     }
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Resolved": return "bg-green-600 text-white";
-      case "In Progress": return "bg-blue-600 text-white";
-      case "Pending": return "bg-yellow-500 text-white";
-      case "Approved": return "bg-green-600 text-white";
-      case "Under Review": return "bg-blue-600 text-white";
-      case "Pending Review": return "bg-yellow-500 text-white";
-      case "Published": return "bg-green-600 text-white";
-      case "Draft": return "bg-gray-500 text-white";
-      case "Completed": return "bg-green-600 text-white";
-      default: return "bg-gray-500 text-white";
+    switch (status?.toLowerCase()) {
+      case "resolved":
+      case "completed":
+      case "published":
+      case "approved":
+        return "bg-green-600 text-white dark:bg-green-700 dark:text-white";
+      case "in progress":
+      case "under review":
+        return "bg-blue-600 text-white dark:bg-blue-700 dark:text-white";
+      case "pending":
+      case "pending review":
+      case "open":
+        return "bg-yellow-500 text-white dark:bg-yellow-600 dark:text-white";
+      case "draft":
+        return "bg-gray-500 text-white dark:bg-gray-600 dark:text-white";
+      case "closed":
+      case "archived":
+      case "failed":
+        return "bg-gray-500 text-white dark:bg-gray-600 dark:text-white";
+      default:
+        return "bg-gray-500 text-white dark:bg-gray-600 dark:text-white";
     }
   };
 
@@ -252,7 +268,7 @@ export default function GovernmentPortal() {
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="w-12 h-12 bg-slate-700 rounded-lg flex items-center justify-center">
+                    <div className="w-12 h-12 bg-[#003153] rounded-lg flex items-center justify-center">
                       <Shield className="h-6 w-6 text-white" />
                     </div>
                     <div>
@@ -266,7 +282,7 @@ export default function GovernmentPortal() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Badge className="bg-green-600 text-white px-4 py-1.5 text-sm font-medium border-0">
+                  <Badge className="bg-[#003153] text-white px-4 py-1.5 text-sm font-medium border-0">
                     <div className="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></div>
                     System Online
                   </Badge>
@@ -295,21 +311,23 @@ export default function GovernmentPortal() {
                     whileHover={{ scale: 1.02, y: -2 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    <Card className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:shadow-lg transition-all duration-200 cursor-pointer group h-full">
-                      <CardContent className="p-5">
-                        <div className="flex items-start gap-4">
-                          <div className={`w-12 h-12 ${action.color} ${action.hoverColor} rounded-lg flex items-center justify-center transition-colors duration-200 group-hover:scale-110`}>
-                            <Icon className="h-6 w-6 text-white" />
+                    <Link href={action.href}>
+                      <Card className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:shadow-lg transition-all duration-200 cursor-pointer group h-full">
+                        <CardContent className="p-5">
+                          <div className="flex items-start gap-4">
+                            <div className={`w-12 h-12 ${action.color} ${action.hoverColor} rounded-lg flex items-center justify-center transition-colors duration-200 group-hover:scale-110`}>
+                              <Icon className="h-6 w-6 text-white" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-slate-900 dark:text-white text-base mb-1 group-hover:text-slate-700 dark:group-hover:text-slate-200 transition-colors">
+                                {action.title}
+                              </h3>
+                              <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2">{action.description}</p>
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-slate-900 dark:text-white text-base mb-1 group-hover:text-slate-700 dark:group-hover:text-slate-200 transition-colors">
-                              {action.title}
-                            </h3>
-                            <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2">{action.description}</p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                        </CardContent>
+                      </Card>
+                    </Link>
                   </motion.div>
                 );
               })}
@@ -601,7 +619,7 @@ export default function GovernmentPortal() {
                             <Eye className="h-4 w-4 mr-1" />
                             View
                           </Button>
-                          <Button size="sm" className="h-8 bg-slate-700 hover:bg-slate-800 text-white border-0">
+                          <Button size="sm" className="h-8 bg-[#003153] hover:bg-[#003153]/90 text-white border-0">
                             <Edit className="h-4 w-4 mr-1" />
                             Update
                           </Button>
@@ -671,7 +689,7 @@ export default function GovernmentPortal() {
                             <Button size="sm" variant="outline" className="h-8 border-slate-300 dark:border-slate-600">
                               <Eye className="h-3 w-3" />
                             </Button>
-                            <Button size="sm" className="h-8 bg-slate-700 hover:bg-slate-800 text-white border-0">
+                            <Button size="sm" className="h-8 bg-[#003153] hover:bg-[#003153]/90 text-white border-0">
                               <Edit className="h-3 w-3" />
                             </Button>
                           </div>
@@ -729,7 +747,7 @@ export default function GovernmentPortal() {
                             <Button size="sm" variant="outline" className="h-8 border-slate-300 dark:border-slate-600">
                               <Eye className="h-3 w-3" />
                             </Button>
-                            <Button size="sm" className="h-8 bg-slate-700 hover:bg-slate-800 text-white border-0">
+                            <Button size="sm" className="h-8 bg-[#003153] hover:bg-[#003153]/90 text-white border-0">
                               <CheckCircle className="h-3 w-3" />
                             </Button>
                           </div>

@@ -37,92 +37,66 @@ import {
   MessageSquare
 } from "lucide-react";
 import Layout from "@/components/layout/Layout";
-import React, { useState } from "react";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { useAuth } from "@/contexts/AuthContext";
+import { businessEventsApi } from "@/lib/api";
+import React, { useState, useEffect } from "react";
 
 export default function BusinessEvents() {
+  const { user } = useAuth();
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<'all' | 'upcoming' | 'past' | 'cancelled'>('all');
   const [sortBy, setSortBy] = useState<'date' | 'name' | 'attendees'>('date');
+  const [events, setEvents] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const events = [
-    {
-      id: 1,
-      name: "Coffee Tasting Event",
-      description: "Monthly coffee tasting event featuring local roasters and specialty blends",
-      date: "2024-02-15",
-      time: "6:00 PM - 8:00 PM",
-      location: "Priya's Café - Main Hall",
-      status: "upcoming",
-      attendees: 45,
-      maxAttendees: 50,
-      type: "Business Event",
-      category: "Food & Beverage",
-      price: "$15",
-      organizer: "Priya Singh",
-      requirements: ["Pre-registration required", "Age 18+", "Valid ID"],
-      features: ["Live Music", "Food Samples", "Expert Tasting Notes", "Take-home Samples"],
-      contact: "priya@cafe.com",
-      phone: "(555) 123-4567"
-    },
-    {
-      id: 2,
-      name: "Small Business Workshop",
-      description: "Free workshop on digital marketing strategies for local businesses",
-      date: "2024-02-20",
-      time: "10:00 AM - 12:00 PM",
-      location: "Community Center - Room A",
-      status: "upcoming",
-      attendees: 0,
-      maxAttendees: 30,
-      type: "Educational Event",
-      category: "Business Development",
-      price: "Free",
-      organizer: "Priya Singh",
-      requirements: ["Registration required", "Bring laptop/tablet", "Business owner preferred"],
-      features: ["Expert Speaker", "Hands-on Activities", "Networking", "Resource Materials"],
-      contact: "workshop@cafe.com",
-      phone: "(555) 123-4567"
-    },
-    {
-      id: 3,
-      name: "Local Vendor Fair",
-      description: "Monthly fair showcasing local products and services from area businesses",
-      date: "2024-02-25",
-      time: "9:00 AM - 4:00 PM",
-      location: "Downtown Plaza",
-      status: "upcoming",
-      attendees: 120,
-      maxAttendees: 200,
-      type: "Community Event",
-      category: "Market",
-      price: "Free",
-      organizer: "Priya Singh",
-      requirements: ["Vendor application required", "Insurance coverage", "Setup by 8:30 AM"],
-      features: ["50+ Vendors", "Live Entertainment", "Food Trucks", "Kids Activities"],
-      contact: "vendor@cafe.com",
-      phone: "(555) 123-4567"
-    },
-    {
-      id: 4,
-      name: "Holiday Special Event",
-      description: "Annual holiday celebration with special menu and entertainment",
-      date: "2023-12-15",
-      time: "5:00 PM - 10:00 PM",
-      location: "Priya's Café - Entire Venue",
-      status: "past",
-      attendees: 85,
-      maxAttendees: 100,
-      type: "Special Event",
-      category: "Holiday",
-      price: "$25",
-      organizer: "Priya Singh",
-      requirements: ["Advance booking required", "Dress code: Semi-formal", "Age 21+"],
-      features: ["Special Menu", "Live Band", "Photo Booth", "Gift Exchange"],
-      contact: "holiday@cafe.com",
-      phone: "(555) 123-4567"
+  // Fetch events from API
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const filters: any = {};
+        if (filterStatus !== 'all') {
+          filters.status = filterStatus === 'upcoming' ? 'approved' : filterStatus;
+        }
+        const data = await businessEventsApi.list(filters);
+        // Map API data to component format
+        const mappedEvents = data.map((event: any) => ({
+          id: event.id,
+          name: event.title,
+          description: event.description,
+          date: event.event_date,
+          time: event.event_time,
+          location: event.location,
+          status: event.status === 'approved' ? 'upcoming' : event.status,
+          attendees: event.current_attendees || 0,
+          maxAttendees: event.max_attendees,
+          type: "Business Event",
+          category: "Business",
+          price: "Free", // Not in API yet
+          organizer: event.business_owner || '',
+          requirements: [], // Not in API yet
+          features: [], // Not in API yet
+          contact: "", // Not in API yet
+          phone: "" // Not in API yet
+        }));
+        setEvents(mappedEvents);
+      } catch (err: any) {
+        console.error('Error fetching events:', err);
+        setError(err.message || 'Failed to load events');
+        setEvents([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (user) {
+      fetchEvents();
     }
-  ];
+  }, [user, filterStatus]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -159,7 +133,13 @@ export default function BusinessEvents() {
   });
 
   return (
-    <Layout userType="business" userName="Priya Singh" userEmail="priya.singh@email.com" showPortalNav={true}>
+    <ProtectedRoute allowedRoles={['business']}>
+      <Layout 
+        userType="business" 
+        userName={`${user?.firstName || ''} ${user?.lastName || ''}`} 
+        userEmail={user?.email || ''} 
+        showPortalNav={true}
+      >
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
           
@@ -181,6 +161,25 @@ export default function BusinessEvents() {
               </Button>
             </div>
           </motion.div>
+
+          {/* Error Message */}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+            >
+              <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+            </motion.div>
+          )}
+
+          {/* Loading State */}
+          {isLoading && (
+            <div className="text-center py-12">
+              <Clock3 className="h-12 w-12 text-gray-400 mx-auto mb-4 animate-spin" />
+              <p className="text-gray-600 dark:text-gray-400">Loading events...</p>
+            </div>
+          )}
 
           {/* Filters and Search */}
           <motion.div
@@ -230,13 +229,14 @@ export default function BusinessEvents() {
           </motion.div>
 
           {/* Events Grid */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-          >
-            {filteredEvents.map((event, index) => {
+          {!isLoading && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            >
+              {filteredEvents.map((event, index) => {
               const StatusIcon = getStatusIcon(event.status);
               return (
                 <motion.div
@@ -428,11 +428,12 @@ export default function BusinessEvents() {
                   </Dialog>
                 </motion.div>
               );
-            })}
-          </motion.div>
+              })}
+            </motion.div>
+          )}
 
           {/* Empty State */}
-          {filteredEvents.length === 0 && (
+          {!isLoading && filteredEvents.length === 0 && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -454,6 +455,7 @@ export default function BusinessEvents() {
           )}
         </div>
       </div>
-    </Layout>
+      </Layout>
+    </ProtectedRoute>
   );
 }

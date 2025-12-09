@@ -1,16 +1,24 @@
 from django.urls import path
-from . import views
+from . import (
+    views_auth,
+    views_users,
+)
 
 urlpatterns = [
-    path('login/', views.login_view, name='login'),
-    path('admin-login/', views.admin_login_view, name='admin_login'),
-    path('signup/', views.signup_view, name='signup'),
-    path('logout/', views.logout_view, name='logout'),
-    path('profile/', views.user_profile_view, name='user_profile'),
-    path('pending-users/', views.list_pending_users_view, name='list_pending_users'),
-    path('all-users/', views.list_all_users_view, name='list_all_users'),
-    path('approve-user/<int:user_id>/', views.approve_user_view, name='approve_user'),
-    path('reject-user/<int:user_id>/', views.reject_user_view, name='reject_user'),
-    path('user-details/<int:user_id>/', views.get_user_details_view, name='get_user_details'),
-    path('deactivate-user/<int:user_id>/', views.deactivate_user_view, name='deactivate_user'),
+    # Authentication endpoints (actions are acceptable for auth)
+    path('login/', views_auth.login_view, name='login'),
+    path('admin-login/', views_auth.admin_login_view, name='admin_login'),
+    path('signup/', views_auth.signup_view, name='signup'),
+    path('logout/', views_auth.logout_view, name='logout'),
+    
+    # Users - RESTful
+    # GET /auth/users/me/ - Get current user profile
+    # PATCH /auth/users/me/ - Update current user profile
+    # GET /auth/users/?status=pending - List pending users
+    # GET /auth/users/ - List all users
+    # GET /auth/users/<id>/ - Get user details
+    # PATCH /auth/users/<id>/ - Approve/reject/deactivate user
+    path('users/me/', views_users.user_profile_view, name='user_profile'),
+    path('users/', views_users.users_list_view, name='users_list'),
+    path('users/<int:user_id>/', views_users.user_detail_action_view, name='user_detail_action'),
 ]

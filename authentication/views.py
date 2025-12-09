@@ -392,11 +392,16 @@ def list_pending_users_view(request):
                 gov_official = GovernmentOfficial.objects.get(user=request.user)
                 if not gov_official.can_approve_users:
                     return Response({
-                        'error': 'You do not have permission to view pending users. Please contact an administrator.'
+                        'error': 'You do not have permission to view pending users. Please contact an administrator to grant "Can Approve Users" permission.',
+                        'debug_info': {
+                            'can_approve_users': gov_official.can_approve_users,
+                            'can_view_users': gov_official.can_view_users,
+                            'official_id': gov_official.id,
+                        }
                     }, status=status.HTTP_403_FORBIDDEN)
             except GovernmentOfficial.DoesNotExist:
                 return Response({
-                    'error': 'Government official profile not found'
+                    'error': 'Government official profile not found. Please ensure your account is properly set up.'
                 }, status=status.HTTP_404_NOT_FOUND)
             
             # Government officials with permissions see only citizens/business from their town

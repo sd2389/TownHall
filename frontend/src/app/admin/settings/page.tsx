@@ -1,7 +1,7 @@
 "use client";
 
 import AdminLayout from "@/components/layout/AdminLayout";
-import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import AdminProtectedRoute from "@/components/auth/AdminProtectedRoute";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import { Settings, Bell, Shield, Mail, Save } from "lucide-react";
 
 export default function AdminSettings() {
   return (
-    <ProtectedRoute allowedRoles={['government', 'superuser']}>
+    <AdminProtectedRoute>
       <AdminLayout currentPage="settings">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
@@ -156,7 +156,7 @@ export default function AdminSettings() {
           </Card>
         </div>
       </AdminLayout>
-    </ProtectedRoute>
+    </AdminProtectedRoute>
   );
 }
 

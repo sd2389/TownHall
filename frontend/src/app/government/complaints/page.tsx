@@ -125,30 +125,42 @@ export default function GovernmentComplaints() {
   }, [user, filterStatus, filterPriority]);
 
   const getStatusColor = (status: string) => {
-    switch (status) {
+    switch (status?.toLowerCase()) {
       case "resolved":
-        return "bg-green-100 text-green-800";
+      case "completed":
+      case "published":
+      case "approved":
+        return "bg-green-600 text-white dark:bg-green-700 dark:text-white";
       case "in_progress":
-        return "bg-blue-100 text-blue-800";
+      case "in progress":
+      case "under review":
+        return "bg-blue-600 text-white dark:bg-blue-700 dark:text-white";
       case "open":
-        return "bg-yellow-100 text-yellow-800";
+      case "pending":
+      case "pending review":
+        return "bg-yellow-500 text-white dark:bg-yellow-600 dark:text-white";
       case "closed":
-        return "bg-gray-100 text-gray-800";
+      case "archived":
+      case "failed":
+        return "bg-gray-500 text-white dark:bg-gray-600 dark:text-white";
+      case "draft":
+        return "bg-gray-500 text-white dark:bg-gray-600 dark:text-white";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-500 text-white dark:bg-gray-600 dark:text-white";
     }
   };
 
   const getPriorityColor = (priority: string) => {
-    switch (priority) {
+    switch (priority?.toLowerCase()) {
       case "high":
-        return "bg-red-100 text-red-800";
+      case "urgent":
+        return "bg-red-600 text-white dark:bg-red-700 dark:text-white";
       case "medium":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-yellow-500 text-white dark:bg-yellow-600 dark:text-white";
       case "low":
-        return "bg-green-100 text-green-800";
+        return "bg-green-600 text-white dark:bg-green-700 dark:text-white";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-500 text-white dark:bg-gray-600 dark:text-white";
     }
   };
 
@@ -277,7 +289,7 @@ export default function GovernmentComplaints() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-3 mb-2">
-                    <div className="w-10 h-10 bg-slate-700 rounded-lg flex items-center justify-center">
+                    <div className="w-10 h-10 bg-[#003153] rounded-lg flex items-center justify-center">
                       <FileText className="h-5 w-5 text-white" />
                     </div>
                     <div>
@@ -291,7 +303,7 @@ export default function GovernmentComplaints() {
                     <Download className="h-4 w-4 mr-2" />
                     Export
                   </Button>
-                  <Button className="bg-slate-700 hover:bg-slate-800 text-white border-0">
+                  <Button className="bg-[#003153] hover:bg-[#003153]/90 text-white border-0">
                     <Plus className="h-4 w-4 mr-2" />
                     New Complaint
                   </Button>
@@ -650,7 +662,7 @@ export default function GovernmentComplaints() {
 
                         {/* Actions */}
                         <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-                          <Button className="bg-slate-700 hover:bg-slate-800 text-white border-0">
+                          <Button className="bg-[#003153] hover:bg-[#003153]/90 text-white border-0">
                             <Edit className="h-4 w-4 mr-2" />
                             Update Status
                           </Button>
@@ -700,7 +712,7 @@ export default function GovernmentComplaints() {
                   ? 'No complaints match your current filters.' 
                   : 'No complaints have been submitted yet.'}
               </p>
-              <Button className="bg-slate-700 hover:bg-slate-800 text-white border-0">
+              <Button className="bg-[#003153] hover:bg-[#003153]/90 text-white border-0">
                 <Plus className="h-4 w-4 mr-2" />
                 Create New Complaint
               </Button>
@@ -813,7 +825,7 @@ export default function GovernmentComplaints() {
                 </Button>
                 <Button
                   onClick={() => currentComplaintId && handleNotifyCitizen(currentComplaintId)}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                  className="flex-1 bg-[#003153] hover:bg-[#003153]/90 text-white"
                   disabled={isSubmittingNotification}
                 >
                   {isSubmittingNotification ? (

@@ -185,12 +185,14 @@ export default function GovernmentAnnouncements() {
 
     try {
       setIsSubmittingAnswer(true);
-      await announcementsApi.questions.answers.create(questionId, answerText.trim());
+      if (!selectedAnnouncement) {
+        alert('No announcement selected');
+        return;
+      }
+      await announcementsApi.questions.answers.create(selectedAnnouncement.id, questionId, answerText.trim());
       
       // Refresh questions
-      if (selectedAnnouncement) {
-        await fetchAnnouncementQuestions(selectedAnnouncement.id);
-      }
+      await fetchAnnouncementQuestions(selectedAnnouncement.id);
       
       setAnswerText("");
       setSelectedQuestionId(null);
@@ -272,30 +274,42 @@ export default function GovernmentAnnouncements() {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
+    switch (status?.toLowerCase()) {
       case "published":
-        return "bg-green-100 text-green-800";
+      case "resolved":
+      case "completed":
+      case "approved":
+        return "bg-green-600 text-white dark:bg-green-700 dark:text-white";
+      case "in_progress":
+      case "in progress":
+      case "under review":
+        return "bg-blue-600 text-white dark:bg-blue-700 dark:text-white";
+      case "pending":
+      case "pending review":
+      case "open":
+        return "bg-yellow-500 text-white dark:bg-yellow-600 dark:text-white";
       case "draft":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-gray-500 text-white dark:bg-gray-600 dark:text-white";
       case "archived":
-        return "bg-gray-100 text-gray-800";
+      case "closed":
+      case "failed":
+        return "bg-gray-500 text-white dark:bg-gray-600 dark:text-white";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-500 text-white dark:bg-gray-600 dark:text-white";
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority?.toLowerCase()) {
       case "urgent":
-        return "bg-red-600 text-white dark:bg-red-700 dark:text-white";
       case "high":
-        return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
+        return "bg-red-600 text-white dark:bg-red-700 dark:text-white";
       case "medium":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
+        return "bg-yellow-500 text-white dark:bg-yellow-600 dark:text-white";
       case "low":
-        return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
+        return "bg-green-600 text-white dark:bg-green-700 dark:text-white";
       default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300";
+        return "bg-gray-500 text-white dark:bg-gray-600 dark:text-white";
     }
   };
 
@@ -353,7 +367,7 @@ export default function GovernmentAnnouncements() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-3 mb-2">
-                    <div className="w-10 h-10 bg-slate-700 rounded-lg flex items-center justify-center">
+                    <div className="w-10 h-10 bg-[#003153] rounded-lg flex items-center justify-center">
                       <Megaphone className="h-5 w-5 text-white" />
                     </div>
                     <div>
@@ -368,7 +382,7 @@ export default function GovernmentAnnouncements() {
                     Export
                   </Button>
                   <Button 
-                    className="bg-slate-700 hover:bg-slate-800 text-white border-0"
+                    className="bg-[#003153] hover:bg-[#003153]/90 text-white border-0"
                     onClick={() => setIsCreateDialogOpen(true)}
                   >
                     <Plus className="h-4 w-4 mr-2" />
@@ -687,7 +701,7 @@ export default function GovernmentAnnouncements() {
                         {/* Actions */}
                         <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                           <Button 
-                            className="bg-slate-700 hover:bg-slate-800 text-white border-0"
+                            className="bg-[#003153] hover:bg-[#003153]/90 text-white border-0"
                             onClick={() => {
                               setSelectedAnnouncement(announcement);
                               setIsEditDialogOpen(true);
@@ -967,7 +981,7 @@ export default function GovernmentAnnouncements() {
                         {/* Actions */}
                         <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                           <Button 
-                            className="bg-slate-700 hover:bg-slate-800 text-white border-0"
+                            className="bg-[#003153] hover:bg-[#003153]/90 text-white border-0"
                             onClick={() => {
                               setSelectedAnnouncement(announcement);
                               setIsEditDialogOpen(true);
@@ -1006,7 +1020,7 @@ export default function GovernmentAnnouncements() {
                   : 'You don\'t have any announcements yet.'}
               </p>
               <Button 
-                className="bg-slate-700 hover:bg-slate-800 text-white border-0"
+                className="bg-[#003153] hover:bg-[#003153]/90 text-white border-0"
                 onClick={() => setIsCreateDialogOpen(true)}
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -1155,7 +1169,7 @@ export default function GovernmentAnnouncements() {
               </Button>
               <Button
                 type="submit"
-                className="bg-slate-700 hover:bg-slate-800 text-white border-0"
+                className="bg-[#003153] hover:bg-[#003153]/90 text-white border-0"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? 'Creating...' : 'Create Announcement'}

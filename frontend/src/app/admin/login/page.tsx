@@ -13,7 +13,10 @@ import {
   Mail,
   Lock,
   AlertCircle,
-  ArrowLeft
+  ArrowLeft,
+  Settings,
+  Key,
+  Server
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -33,41 +36,32 @@ export default function AdminLoginPage() {
   
   // Check if API URL is accessible on mount
   useEffect(() => {
-    // Test API connection
     const testConnection = async () => {
       setBackendStatus('checking');
       try {
-        // Try a simple GET request to check if server is up
         const testUrl = API_BASE_URL.replace('/api', '') || 'http://localhost:8000';
         const testResponse = await fetch(`${testUrl}/admin/`, {
           method: 'GET',
-          mode: 'no-cors', // This won't throw on CORS errors, just check if server responds
+          mode: 'no-cors',
         });
         setBackendStatus('online');
-        console.log('Backend server is reachable');
       } catch (err: any) {
-        // Try the actual API endpoint
         try {
           const apiTest = await fetch(`${API_BASE_URL}/auth/admin-login/`, {
             method: 'OPTIONS',
           });
           if (apiTest.status === 200 || apiTest.status === 405) {
             setBackendStatus('online');
-            console.log('Backend API is reachable');
           } else {
             setBackendStatus('offline');
           }
         } catch (apiErr) {
           setBackendStatus('offline');
-          console.warn('Backend API may not be running. Please ensure the Django server is running on port 8000.');
-          console.warn('Error details:', apiErr);
         }
       }
     };
     
-    // Only test if we're in the browser
     if (typeof window !== 'undefined') {
-      // Delay the test slightly to avoid race conditions
       const timer = setTimeout(() => {
         testConnection();
       }, 500);
@@ -81,7 +75,6 @@ export default function AdminLoginPage() {
       ...prev,
       [name]: value
     }));
-    // Clear error when user starts typing
     if (error) setError("");
   };
 
@@ -91,53 +84,29 @@ export default function AdminLoginPage() {
     setIsLoading(true);
 
     try {
-      // Authenticate with Django admin
       let response;
       try {
         const url = `${API_BASE_URL}/auth/admin-login/`;
-        console.log('Attempting to connect to:', url);
-        console.log('Current origin:', typeof window !== 'undefined' ? window.location.origin : 'server-side');
-        
         response = await fetch(url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          // Remove credentials for now to avoid CORS issues
-          // credentials: 'include',
           body: JSON.stringify({
             email: formData.email,
             password: formData.password,
           }),
         });
-        
-        console.log('Response status:', response.status, response.statusText);
-        console.log('Response headers:', Object.fromEntries(response.headers.entries()));
       } catch (fetchError: any) {
-        // Handle network errors (connection refused, CORS, etc.)
-        console.error('Network error details:', {
-          name: fetchError.name,
-          message: fetchError.message,
-          stack: fetchError.stack,
-          url: `${API_BASE_URL}/auth/admin-login/`
-        });
-        
-        // More specific error messages
         if (fetchError.name === 'TypeError' && fetchError.message.includes('fetch')) {
           throw new Error(`Cannot connect to the server at ${API_BASE_URL}. Please ensure:
 1. The Django backend is running: python manage.py runserver
 2. The backend is accessible at http://localhost:8000
 3. CORS is properly configured in settings.py`);
         }
-        
-        if (fetchError.message) {
-          throw new Error(`Network error: ${fetchError.message}`);
-        }
-        
         throw new Error('Network error. Please check your connection and ensure the backend server is running on http://localhost:8000');
       }
 
-      // Check if response is ok before parsing JSON
       let data;
       try {
         const text = await response.text();
@@ -146,28 +115,22 @@ export default function AdminLoginPage() {
         }
         data = JSON.parse(text);
       } catch (parseError) {
-        console.error('Parse error:', parseError);
         throw new Error('Invalid response from server. Please check if the backend is running and accessible.');
       }
 
       if (response.ok) {
-        // Store admin session info
         if (data.token) {
           localStorage.setItem('admin_token', data.token);
         }
         if (data.user) {
           localStorage.setItem('admin_user', JSON.stringify(data.user));
         }
-        
-        // Redirect to admin dashboard
         router.push('/admin');
       } else {
         setError(data.error || 'Invalid credentials. Please try again.');
       }
     } catch (err: any) {
       console.error('Admin login error:', err);
-      
-      // More specific error messages
       if (err instanceof TypeError && err.message.includes('fetch')) {
         setError('Cannot connect to the server. Please ensure the backend is running on http://localhost:8000');
       } else if (err.message) {
@@ -181,56 +144,88 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 opacity-10">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`,
+          backgroundSize: '40px 40px'
+        }}></div>
+      </div>
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-md"
+        className="w-full max-w-md relative z-10"
       >
-        <Card className="shadow-2xl border-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-lg">
-          <CardHeader className="space-y-1 text-center pb-6">
-            <div className="flex justify-center mb-4">
-              <div className="p-3 rounded-full bg-indigo-100 dark:bg-indigo-900/30">
-                <Shield className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
+        {/* Back to Home Link */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="mb-6"
+        >
+          <Link href="/">
+            <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white hover:bg-slate-800">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Home
+            </Button>
+          </Link>
+        </motion.div>
+
+        <Card className="shadow-2xl border-slate-700 bg-slate-800/95 backdrop-blur-lg">
+          <CardHeader className="space-y-1 text-center pb-6 pt-8">
+            {/* Admin Badge */}
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: "spring" }}
+              className="flex justify-center mb-4"
+            >
+              <div className="relative">
+                <div className="absolute inset-0 bg-[#003153] rounded-full blur-xl opacity-50"></div>
+                <div className="relative p-4 rounded-full bg-gradient-to-br from-[#003153] to-slate-700 border-2 border-slate-600">
+                  <Shield className="h-10 w-10 text-white" />
+                </div>
               </div>
-            </div>
-            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-              Admin Login
+            </motion.div>
+            
+            <CardTitle className="text-3xl font-bold text-white">
+              Admin Portal
             </CardTitle>
-            <CardDescription className="text-base">
-              Access the administrative dashboard
+            <CardDescription className="text-slate-400 text-base">
+              System Administration Dashboard
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          
+          <CardContent className="px-8 pb-8">
+            {/* Backend Status */}
             {backendStatus === 'checking' && (
-              <div className="mb-4 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400 text-sm">
+              <div className="mb-4 p-3 rounded-lg bg-blue-900/30 border border-blue-700 text-blue-300 text-sm">
                 <p className="flex items-center gap-2">
-                  <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+                  <div className="animate-spin h-4 w-4 border-2 border-blue-400 border-t-transparent rounded-full"></div>
                   Checking backend connection...
                 </p>
               </div>
             )}
+            
             {backendStatus === 'offline' && (
-              <div className="mb-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-sm">
-                <p className="font-semibold">⚠️ Backend server appears to be offline</p>
-                <p className="mt-1">Please ensure the Django server is running:</p>
-                <code className="block mt-2 p-2 bg-amber-100 dark:bg-amber-900/40 rounded text-xs whitespace-pre">
+              <div className="mb-4 p-4 rounded-lg bg-amber-900/30 border border-amber-700 text-amber-300 text-sm">
+                <p className="font-semibold flex items-center gap-2 mb-2">
+                  <Server className="h-4 w-4" />
+                  Backend server appears to be offline
+                </p>
+                <p className="text-xs text-amber-400 mb-2">Please ensure the Django server is running:</p>
+                <code className="block p-2 bg-slate-900 rounded text-xs text-amber-200 whitespace-pre border border-amber-800">
                   {`cd /home/smitdesai/Coding/TownHall
 source townhallvenv/bin/activate
 python manage.py runserver`}
                 </code>
-                <div className="mt-2 text-xs space-y-1">
-                  <p>API URL: <code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded">{API_BASE_URL}</code></p>
-                  {typeof window !== 'undefined' && (
-                    <p>Frontend Origin: <code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded">{window.location.origin}</code></p>
-                  )}
-                </div>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="mt-2 w-full"
+                  className="mt-2 w-full border-amber-700 text-amber-300 hover:bg-amber-900/20"
                   onClick={async () => {
                     setBackendStatus('checking');
                     try {
@@ -239,13 +234,11 @@ python manage.py runserver`}
                       });
                       if (test.status === 200 || test.status === 405) {
                         setBackendStatus('online');
-                        alert('Backend is now reachable!');
                       } else {
                         setBackendStatus('offline');
                       }
                     } catch (err) {
                       setBackendStatus('offline');
-                      console.error('Connection test failed:', err);
                     }
                   }}
                 >
@@ -253,22 +246,24 @@ python manage.py runserver`}
                 </Button>
               </div>
             )}
-            <form onSubmit={handleSubmit} className="space-y-4" suppressHydrationWarning>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
               {error && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400"
+                  className="flex items-center gap-2 p-3 rounded-lg bg-red-900/30 border border-red-700 text-red-300"
                 >
                   <AlertCircle className="h-5 w-5 flex-shrink-0" />
                   <p className="text-sm">{error}</p>
                 </motion.div>
               )}
 
+              {/* Email Field */}
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="email" className="text-slate-300">Email Address</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                   <Input
                     id="email"
                     name="email"
@@ -276,17 +271,18 @@ python manage.py runserver`}
                     placeholder="admin@example.com"
                     value={formData.email}
                     onChange={handleInputChange}
-                    className="pl-10"
+                    className="pl-10 bg-slate-900/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-[#003153] focus:ring-[#003153]"
                     required
                     autoComplete="email"
                   />
                 </div>
               </div>
 
+              {/* Password Field */}
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="text-slate-300">Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                   <Input
                     id="password"
                     name="password"
@@ -294,7 +290,7 @@ python manage.py runserver`}
                     placeholder="Enter your password"
                     value={formData.password}
                     onChange={handleInputChange}
-                    className="pl-10 pr-10"
+                    className="pl-10 pr-10 bg-slate-900/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-[#003153] focus:ring-[#003153]"
                     required
                     autoComplete="current-password"
                   />
@@ -302,7 +298,7 @@ python manage.py runserver`}
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-slate-700/50 text-slate-400 hover:text-slate-200"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? (
@@ -314,39 +310,49 @@ python manage.py runserver`}
                 </div>
               </div>
 
+              {/* Login Button */}
               <Button
                 type="submit"
-                className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                className="w-full bg-[#003153] hover:bg-[#003153]/90 text-white h-12 text-base font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
                 disabled={isLoading}
               >
                 {isLoading ? (
                   <span className="flex items-center gap-2">
                     <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Signing in...
+                    Authenticating...
                   </span>
                 ) : (
-                  "Sign In to Admin Panel"
+                  <span className="flex items-center gap-2">
+                    <Key className="h-4 w-4" />
+                    Sign In to Admin Panel
+                  </span>
                 )}
               </Button>
 
-              <div className="text-center pt-4">
-                <Link
-                  href="/"
-                  className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Back to Home
-                </Link>
+              {/* Security Notice */}
+              <div className="pt-4 border-t border-slate-700">
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-slate-900/50 border border-slate-700">
+                  <Settings className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                  <div className="text-xs text-slate-400">
+                    <p className="font-semibold text-slate-300 mb-1">Security Notice</p>
+                    <p>This is a restricted access area. All login attempts are logged and monitored.</p>
+                  </div>
+                </div>
               </div>
             </form>
           </CardContent>
         </Card>
 
-        <div className="mt-6 text-center text-sm text-muted-foreground">
-          <p>For authorized administrators only</p>
+        {/* Footer */}
+        <div className="mt-6 text-center">
+          <p className="text-sm text-slate-500">
+            Authorized administrators only
+          </p>
+          <p className="text-xs text-slate-600 mt-1">
+            Unauthorized access is prohibited
+          </p>
         </div>
       </motion.div>
     </div>
   );
 }
-
