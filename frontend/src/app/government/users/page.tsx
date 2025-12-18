@@ -26,7 +26,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usersApi } from "@/lib/api";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
-interface PendingUser {
+interface User {
   user_id: number;
   email: string;
   firstName: string;
@@ -34,15 +34,18 @@ interface PendingUser {
   role: string;
   town?: string;
   created_at: string;
+  is_approved?: boolean;
 }
 
 export default function GovernmentUsers() {
   const { user } = useAuth();
-  const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
+  const [viewMode, setViewMode] = useState<"pending" | "all">("pending");
+  const [pendingUsers, setPendingUsers] = useState<User[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRole, setFilterRole] = useState<"all" | "citizen" | "business">("all");
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedUser, setSelectedUser] = useState<PendingUser | null>(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [userDetails, setUserDetails] = useState<any>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
@@ -50,36 +53,63 @@ export default function GovernmentUsers() {
   const [permissionError, setPermissionError] = useState<string | null>(null);
 
   // Fetch pending users
-  useEffect(() => {
-    const fetchPendingUsers = async () => {
-      try {
-        setIsLoading(true);
-        setPermissionError(null); // Clear any previous permission errors
-        const data = await usersApi.listPending();
-        setPendingUsers(data);
-      } catch (error: any) {
-        // Don't show alert for permission errors - we'll show a card instead
-        if (error.message && (error.message.includes('permission') || error.message.includes('Permission'))) {
-          setPermissionError(error.message);
-          setPendingUsers([]); // Set empty to show permission error card
-          // Log debug info if available
-          if (error.debug_info) {
-            console.log('Permission debug info:', error.debug_info);
-          }
-        } else {
-          console.error('Error fetching pending users:', error);
-          setPermissionError(null);
-          alert(error.message || 'Failed to fetch pending users');
+  const fetchPendingUsers = async () => {
+    try {
+      setIsLoading(true);
+      setPermissionError(null);
+      const data = await usersApi.listPending();
+      setPendingUsers(data);
+    } catch (error: any) {
+      if (error.message && (error.message.includes('permission') || error.message.includes('Permission'))) {
+        setPermissionError(error.message);
+        setPendingUsers([]);
+        if (error.debug_info) {
+          console.log('Permission debug info:', error.debug_info);
         }
-      } finally {
-        setIsLoading(false);
+      } else {
+        console.error('Error fetching pending users:', error);
+        setPermissionError(null);
+        alert(error.message || 'Failed to fetch pending users');
       }
-    };
-
-    if (user) {
-      fetchPendingUsers();
+    } finally {
+      setIsLoading(false);
     }
-  }, [user]);
+  };
+
+  // Fetch all users
+  const fetchAllUsers = async () => {
+    try {
+      setIsLoading(true);
+      setPermissionError(null);
+      const data = await usersApi.listAll();
+      setAllUsers(data);
+    } catch (error: any) {
+      if (error.message && (error.message.includes('permission') || error.message.includes('Permission'))) {
+        setPermissionError(error.message);
+        setAllUsers([]);
+        if (error.debug_info) {
+          console.log('Permission debug info:', error.debug_info);
+        }
+      } else {
+        console.error('Error fetching all users:', error);
+        setPermissionError(null);
+        alert(error.message || 'Failed to fetch all users');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch users based on view mode
+  useEffect(() => {
+    if (user) {
+      if (viewMode === "pending") {
+        fetchPendingUsers();
+      } else {
+        fetchAllUsers();
+      }
+    }
+  }, [user, viewMode]);
 
   // Fetch user details
   const fetchUserDetails = async (userId: number) => {
@@ -105,8 +135,13 @@ export default function GovernmentUsers() {
     try {
       setIsProcessing(userId);
       await usersApi.approve(userId);
-      // Remove approved user from list
-      setPendingUsers(prev => prev.filter(u => u.user_id !== userId));
+      // Remove approved user from pending list and refresh
+      if (viewMode === "pending") {
+        setPendingUsers(prev => prev.filter(u => u.user_id !== userId));
+      } else {
+        // Refresh all users to update approval status
+        fetchAllUsers();
+      }
       alert('User approved successfully!');
     } catch (error: any) {
       console.error('Error approving user:', error);
@@ -125,8 +160,13 @@ export default function GovernmentUsers() {
     try {
       setIsProcessing(userId);
       await usersApi.reject(userId);
-      // Remove rejected user from list
-      setPendingUsers(prev => prev.filter(u => u.user_id !== userId));
+      // Remove rejected user from pending list and refresh
+      if (viewMode === "pending") {
+        setPendingUsers(prev => prev.filter(u => u.user_id !== userId));
+      } else {
+        // Refresh all users to update approval status
+        fetchAllUsers();
+      }
       alert('User rejected successfully!');
     } catch (error: any) {
       console.error('Error rejecting user:', error);
@@ -156,7 +196,9 @@ export default function GovernmentUsers() {
     );
   };
 
-  const filteredUsers = pendingUsers.filter(user => {
+  const currentUsers = viewMode === "pending" ? pendingUsers : allUsers;
+  
+  const filteredUsers = currentUsers.filter(user => {
     const matchesSearch = 
       user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -194,18 +236,51 @@ export default function GovernmentUsers() {
                       </div>
                       <div>
                         <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
-                          User Account Approvals
+                          {viewMode === "pending" ? "User Account Approvals" : "All Users"}
                         </h1>
                         <p className="text-slate-600 dark:text-slate-300 text-sm mt-1">
-                          Review and approve citizen and business owner accounts from your town
+                          {viewMode === "pending" 
+                            ? "Review and approve citizen and business owner accounts from your town"
+                            : "View all citizen and business owner accounts from your town"}
                         </p>
                       </div>
                     </div>
                   </div>
-                  <Badge className="bg-yellow-500 text-white px-4 py-1.5 text-sm font-medium border-0">
-                    <Clock className="h-3 w-3 mr-1" />
-                    {pendingUsers.length} Pending
-                  </Badge>
+                  <div className="flex items-center gap-3">
+                    {viewMode === "pending" && (
+                      <Badge className="bg-yellow-500 text-white px-4 py-1.5 text-sm font-medium border-0">
+                        <Clock className="h-3 w-3 mr-1" />
+                        {pendingUsers.length} Pending
+                      </Badge>
+                    )}
+                    {viewMode === "all" && (
+                      <Badge className="bg-blue-500 text-white px-4 py-1.5 text-sm font-medium border-0">
+                        <Users className="h-3 w-3 mr-1" />
+                        {allUsers.length} Total
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                {/* View Mode Toggle */}
+                <div className="mt-4 flex gap-2 border-t border-slate-200 dark:border-slate-700 pt-4">
+                  <Button
+                    variant={viewMode === "pending" ? "default" : "outline"}
+                    onClick={() => setViewMode("pending")}
+                    size="sm"
+                    className={viewMode === "pending" ? "bg-[#003153] hover:bg-[#003153]/90 text-white" : ""}
+                  >
+                    <Clock className="h-4 w-4 mr-2" />
+                    Pending Approvals
+                  </Button>
+                  <Button
+                    variant={viewMode === "all" ? "default" : "outline"}
+                    onClick={() => setViewMode("all")}
+                    size="sm"
+                    className={viewMode === "all" ? "bg-[#003153] hover:bg-[#003153]/90 text-white" : ""}
+                  >
+                    <Users className="h-4 w-4 mr-2" />
+                    All Users
+                  </Button>
                 </div>
               </div>
             </motion.div>
@@ -262,12 +337,14 @@ export default function GovernmentUsers() {
               </Card>
             </motion.div>
 
-            {/* Pending Users List */}
+            {/* Users List */}
             {isLoading ? (
               <Card className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
                 <CardContent className="p-12 text-center">
                   <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#003153]"></div>
-                  <p className="text-slate-600 dark:text-slate-300 mt-4">Loading pending users...</p>
+                  <p className="text-slate-600 dark:text-slate-300 mt-4">
+                    {viewMode === "pending" ? "Loading pending users..." : "Loading all users..."}
+                  </p>
                 </CardContent>
               </Card>
             ) : permissionError ? (
@@ -288,7 +365,11 @@ export default function GovernmentUsers() {
                       <li>Log in to the admin panel at <code className="bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">/admin</code></li>
                       <li>Navigate to <strong>Government Officials</strong> in the sidebar</li>
                       <li>Find your government official profile (search by your email)</li>
-                      <li>Check the <strong>"Can Approve Users"</strong> checkbox</li>
+                      <li>
+                        {viewMode === "pending" 
+                          ? <>Check the <strong>"Can Approve Users"</strong> checkbox</>
+                          : <>Check the <strong>"Can View Users"</strong> checkbox</>}
+                      </li>
                       <li>Click <strong>"Save Changes"</strong> button</li>
                       <li>Refresh this page</li>
                     </ol>
@@ -303,11 +384,15 @@ export default function GovernmentUsers() {
                 <CardContent className="p-12 text-center">
                   <UserCheck className="h-16 w-16 text-slate-300 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-                    {pendingUsers.length === 0 ? 'No Pending Users' : 'No Users Found'}
+                    {currentUsers.length === 0 
+                      ? (viewMode === "pending" ? 'No Pending Users' : 'No Users Found')
+                      : 'No Users Found'}
                   </h3>
                   <p className="text-slate-600 dark:text-slate-400 mb-6">
-                    {pendingUsers.length === 0
-                      ? 'All user accounts from your town have been reviewed.'
+                    {currentUsers.length === 0
+                      ? (viewMode === "pending" 
+                          ? 'All user accounts from your town have been reviewed.'
+                          : 'No users found in your town.')
                       : 'No users match your current filters.'}
                   </p>
                   {(searchTerm || filterRole !== "all") && (
@@ -352,10 +437,24 @@ export default function GovernmentUsers() {
                                   {pendingUser.firstName} {pendingUser.lastName}
                                 </h3>
                                 {getRoleBadge(pendingUser.role)}
-                                <Badge className="bg-yellow-500 text-white">
-                                  <Clock className="h-3 w-3 mr-1" />
-                                  Pending Approval
-                                </Badge>
+                                {viewMode === "pending" ? (
+                                  <Badge className="bg-yellow-500 text-white">
+                                    <Clock className="h-3 w-3 mr-1" />
+                                    Pending Approval
+                                  </Badge>
+                                ) : (
+                                  pendingUser.is_approved ? (
+                                    <Badge className="bg-green-500 text-white">
+                                      <CheckCircle className="h-3 w-3 mr-1" />
+                                      Approved
+                                    </Badge>
+                                  ) : (
+                                    <Badge className="bg-red-500 text-white">
+                                      <XCircle className="h-3 w-3 mr-1" />
+                                      Not Approved
+                                    </Badge>
+                                  )
+                                )}
                               </div>
                               <div className="space-y-1 text-sm text-slate-600 dark:text-slate-400">
                                 <div className="flex items-center gap-2">
@@ -389,34 +488,38 @@ export default function GovernmentUsers() {
                               <AlertCircle className="h-4 w-4 mr-2" />
                               View Details
                             </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => handleApprove(pendingUser.user_id)}
-                              className="bg-green-600 hover:bg-green-700 text-white border-0"
-                              disabled={isProcessing === pendingUser.user_id}
-                            >
-                              {isProcessing === pendingUser.user_id ? (
-                                <>
-                                  <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                  Processing...
-                                </>
-                              ) : (
-                                <>
-                                  <CheckCircle className="h-4 w-4 mr-2" />
-                                  Approve
-                                </>
-                              )}
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleReject(pendingUser.user_id)}
-                              className="border-red-300 text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                              disabled={isProcessing === pendingUser.user_id}
-                            >
-                              <XCircle className="h-4 w-4 mr-2" />
-                              Reject
-                            </Button>
+                            {viewMode === "pending" && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleApprove(pendingUser.user_id)}
+                                  className="bg-green-600 hover:bg-green-700 text-white border-0"
+                                  disabled={isProcessing === pendingUser.user_id}
+                                >
+                                  {isProcessing === pendingUser.user_id ? (
+                                    <>
+                                      <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                      Processing...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CheckCircle className="h-4 w-4 mr-2" />
+                                      Approve
+                                    </>
+                                  )}
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleReject(pendingUser.user_id)}
+                                  className="border-red-300 text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                  disabled={isProcessing === pendingUser.user_id}
+                                >
+                                  <XCircle className="h-4 w-4 mr-2" />
+                                  Reject
+                                </Button>
+                              </>
+                            )}
                           </div>
                         </div>
                       </CardContent>

@@ -52,7 +52,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
       
-      const response = await fetch(`${API_BASE_URL}/auth/profile/`, {
+      const response = await fetch(`${API_BASE_URL}/auth/users/me/`, {
+        method: 'GET',
         headers: {
           'Authorization': `Token ${authToken}`,
           'Content-Type': 'application/json',
@@ -70,16 +71,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem('auth_token');
         setToken(null);
         setUser(null);
+      } else {
+        // Other error status codes
+        console.error(`Failed to fetch user profile: ${response.status} ${response.statusText}`);
       }
     } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        console.error('Request timeout when fetching user profile');
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          console.error('Request timeout when fetching user profile');
+        } else if (error.message === 'Failed to fetch' || error.message.includes('fetch')) {
+          // Network error - backend might not be running
+          console.error(`Network error: Cannot connect to backend at ${API_BASE_URL}. Please ensure the Django server is running.`);
+        } else {
+          console.error('Error fetching user profile:', error.message);
+        }
       } else {
-        console.error('Error fetching user profile:', error);
+        console.error('Unknown error fetching user profile:', error);
       }
       // Don't clear token on network errors, only on auth errors
-      // localStorage.removeItem('auth_token');
-      // setToken(null);
+      // This allows the user to retry when the backend comes back online
     } finally {
       setIsLoading(false);
     }

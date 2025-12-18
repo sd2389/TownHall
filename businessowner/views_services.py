@@ -13,7 +13,7 @@ from .utils import (
     validate_required_field, create_booking_notification,
     format_service_response
 )
-from government.utils import filter_by_town
+from government.utils import get_user_town
 from authentication.models import UserProfile
 from citizen.models import CitizenProfile
 import logging
@@ -37,10 +37,15 @@ def list_business_services_view(request):
                     }, status=status.HTTP_404_NOT_FOUND)
                 services = BusinessService.objects.filter(business_owner=business_profile)
             else:
-                services = filter_by_town(
-                    BusinessService.objects.filter(is_active=True),
-                    request.user
-                )
+                # Filter services by town through business_owner -> user -> userprofile -> town
+                user_town = get_user_town(request.user)
+                if user_town and not request.user.is_superuser:
+                    services = BusinessService.objects.filter(
+                        is_active=True,
+                        business_owner__user__userprofile__town=user_town
+                    )
+                else:
+                    services = BusinessService.objects.filter(is_active=True)
             
             services = services.select_related('business_owner', 'business_owner__user').order_by('-created_at')
             

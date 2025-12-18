@@ -42,7 +42,7 @@ export default function AdminUsers() {
 
   const fetchAllUsers = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/all-users/`, {
+      const response = await fetch(`${API_BASE_URL}/auth/users/`, {
         headers: {
           'Authorization': `Token ${adminToken}`,
           'Content-Type': 'application/json',

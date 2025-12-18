@@ -6,6 +6,8 @@ import AdminProtectedRoute from "@/components/auth/AdminProtectedRoute";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { MapPin, Search, CheckCircle, Clock, Plus } from "lucide-react";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
@@ -34,6 +36,14 @@ export default function AdminTowns() {
   const [activeTowns, setActiveTowns] = useState<Town[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState<"changes" | "towns">("towns");
+  const [isAddTownDialogOpen, setIsAddTownDialogOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [newTown, setNewTown] = useState({
+    name: '',
+    state: '',
+    zip_codes: '' as string | string[]
+  });
+  const [error, setError] = useState<string | null>(null);
 
   // Get admin token from localStorage
   useEffect(() => {
@@ -122,6 +132,59 @@ export default function AdminTowns() {
       }
     } catch (error) {
       alert('Failed to reject request');
+    }
+  };
+
+  const handleAddTown = async () => {
+    if (!newTown.name || !newTown.state) {
+      setError('Town name and state are required');
+      return;
+    }
+
+    if (!adminToken) {
+      setError('Admin token not found. Please log in again.');
+      return;
+    }
+
+    try {
+      setIsCreating(true);
+      setError(null);
+
+      // Parse zip codes (comma-separated string to array)
+      const zipCodes = newTown.zip_codes
+        ? (typeof newTown.zip_codes === 'string' 
+            ? newTown.zip_codes.split(',').map(z => z.trim()).filter(z => z)
+            : newTown.zip_codes)
+        : [];
+
+      const response = await fetch(`${API_BASE_URL}/towns/active/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Token ${adminToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: newTown.name.trim(),
+          state: newTown.state.trim(),
+          zip_codes: zipCodes,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setIsAddTownDialogOpen(false);
+        setNewTown({ name: '', state: '', zip_codes: '' });
+        fetchData();
+        alert('Town created successfully!');
+      } else {
+        setError(data.error || 'Failed to create town');
+      }
+    } catch (error) {
+      console.error('Error creating town:', error);
+      setError('Failed to create town. Please try again.');
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -251,10 +314,76 @@ export default function AdminTowns() {
                   <h2 className="text-2xl font-semibold text-gray-900">Active Towns</h2>
                   <p className="text-gray-600">Manage town information and settings</p>
                 </div>
-                <Button className="bg-gray-900 hover:bg-gray-800">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Town
-                </Button>
+                <Dialog open={isAddTownDialogOpen} onOpenChange={setIsAddTownDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="bg-gray-900 hover:bg-gray-800">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Town
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Add New Town</DialogTitle>
+                      <DialogDescription>
+                        Create a new town in the system
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      {error && (
+                        <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                          <p className="text-sm text-red-800">{error}</p>
+                        </div>
+                      )}
+                      <div>
+                        <label className="text-sm font-medium">Town Name *</label>
+                        <Input
+                          value={newTown.name}
+                          onChange={(e) => setNewTown({ ...newTown, name: e.target.value })}
+                          placeholder="e.g., Secaucus"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">State *</label>
+                        <Input
+                          value={newTown.state}
+                          onChange={(e) => setNewTown({ ...newTown, state: e.target.value })}
+                          placeholder="e.g., New Jersey"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">ZIP Codes (optional)</label>
+                        <Input
+                          value={typeof newTown.zip_codes === 'string' ? newTown.zip_codes : newTown.zip_codes.join(', ')}
+                          onChange={(e) => setNewTown({ ...newTown, zip_codes: e.target.value })}
+                          placeholder="e.g., 07094, 07095 (comma-separated)"
+                          className="mt-1"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Enter ZIP codes separated by commas</p>
+                      </div>
+                      <div className="flex justify-end gap-2 pt-4">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setIsAddTownDialogOpen(false);
+                            setNewTown({ name: '', state: '', zip_codes: '' });
+                            setError(null);
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleAddTown}
+                          disabled={isCreating || !newTown.name || !newTown.state}
+                          className="bg-gray-900 hover:bg-gray-800"
+                        >
+                          {isCreating ? 'Creating...' : 'Create Town'}
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
 
               {loading ? (

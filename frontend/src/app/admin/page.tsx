@@ -292,7 +292,7 @@ function AdminDashboard() {
     
     try {
       const [usersRes, townChangesRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/auth/pending-users/`, {
+        fetch(`${API_BASE_URL}/auth/users/?status=pending`, {
           headers: {
             'Authorization': `Token ${adminToken}`,
             'Content-Type': 'application/json',

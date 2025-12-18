@@ -73,3 +73,10 @@ def user_town_emergency_contacts(request):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+
+
+
+
+
+
+

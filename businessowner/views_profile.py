@@ -47,3 +47,10 @@ def get_business_profile_view(request):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+
+
+
+
+
+
+

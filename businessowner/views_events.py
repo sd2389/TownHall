@@ -13,9 +13,10 @@ from .utils import (
     validate_required_field, check_town_access, create_event_notification,
     format_event_response
 )
-from government.utils import filter_by_town
+from government.utils import get_user_town
 from authentication.models import UserProfile
 from citizen.models import CitizenProfile
+from datetime import datetime, date, time
 import logging
 
 logger = logging.getLogger(__name__)
@@ -36,14 +37,16 @@ def list_business_events_view(request):
                         'error': 'Business profile not found'
                     }, status=status.HTTP_404_NOT_FOUND)
                 events = BusinessEvent.objects.filter(business_owner=business_profile)
-            elif profile.role == 'citizen' or profile.role == 'government':
-                events = filter_by_town(
-                    BusinessEvent.objects.filter(status='approved'),
-                    request.user
-                )
+            elif profile.role == 'government':
+                # Government can see all events (pending, approved, rejected) for review
+                events = BusinessEvent.objects.all()
+            elif profile.role == 'citizen':
+                # Citizens only see approved events
+                events = BusinessEvent.objects.filter(status='approved')
             else:
                 events = BusinessEvent.objects.filter(status='approved')
             
+            # Apply status filter if provided
             status_filter = request.query_params.get('status', None)
             if status_filter and status_filter != 'all':
                 events = events.filter(status=status_filter)
@@ -90,10 +93,34 @@ def list_business_events_view(request):
             if not is_valid:
                 return Response({'error': error}, status=status.HTTP_400_BAD_REQUEST)
             
-            event_date = request.data.get('event_date')
-            event_time = request.data.get('event_time')
+            event_date_str = request.data.get('event_date')
+            event_time_str = request.data.get('event_time')
             location = request.data.get('location', '').strip()
             max_attendees = request.data.get('max_attendees')
+            
+            # Validate and parse date
+            if not event_date_str:
+                return Response({'error': 'Event date is required'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            try:
+                # Parse date string (format: YYYY-MM-DD)
+                event_date = datetime.strptime(event_date_str, '%Y-%m-%d').date()
+            except (ValueError, TypeError):
+                return Response({'error': 'Invalid date format. Use YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Validate and parse time
+            if not event_time_str:
+                return Response({'error': 'Event time is required'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            try:
+                # Parse time string (format: HH:MM or HH:MM:SS)
+                if len(event_time_str.split(':')) == 2:
+                    time_obj = datetime.strptime(event_time_str, '%H:%M').time()
+                else:
+                    time_obj = datetime.strptime(event_time_str, '%H:%M:%S').time()
+                event_time = time_obj
+            except (ValueError, TypeError):
+                return Response({'error': 'Invalid time format. Use HH:MM'}, status=status.HTTP_400_BAD_REQUEST)
             
             event = BusinessEvent.objects.create(
                 business_owner=business_profile,
@@ -106,13 +133,16 @@ def list_business_events_view(request):
                 max_attendees=int(max_attendees) if max_attendees else None,
             )
             
+            # Refresh from database to ensure we have the proper date/time objects
+            event.refresh_from_db()
+            
             return Response({
                 'message': 'Event created successfully. Pending government approval.',
                 'event': {
                     'id': event.id,
                     'title': event.title,
                     'status': event.status,
-                    'event_date': event.event_date.strftime('%Y-%m-%d'),
+                    'event_date': event.event_date.strftime('%Y-%m-%d') if hasattr(event.event_date, 'strftime') else str(event.event_date),
                 }
             }, status=status.HTTP_201_CREATED)
         except Exception as e:

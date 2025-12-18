@@ -150,3 +150,110 @@ class AnnouncementQuestion(models.Model):
     
     def __str__(self):
         return f"Question on {self.announcement.title} by {self.citizen.user.get_full_name()}"
+
+
+class BillProposal(models.Model):
+    """Model for government bill proposals"""
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('published', 'Published'),
+        ('under_review', 'Under Review'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+        ('implemented', 'Implemented'),
+        ('archived', 'Archived'),
+    ]
+    
+    PRIORITY_CHOICES = [
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+        ('urgent', 'Urgent'),
+    ]
+    
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    summary = models.TextField(blank=True, help_text="Short summary for preview")
+    department = models.ForeignKey(Department, on_delete=models.CASCADE)
+    town = models.ForeignKey('towns.Town', on_delete=models.CASCADE, related_name='bill_proposals', null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='medium')
+    created_by = models.ForeignKey(GovernmentOfficial, on_delete=models.CASCADE, related_name='created_bills')
+    
+    # Voting statistics (calculated from BillVote model)
+    support_count = models.IntegerField(default=0)
+    oppose_count = models.IntegerField(default=0)
+    
+    # Engagement metrics
+    views = models.IntegerField(default=0)
+    comment_count = models.IntegerField(default=0)
+    
+    # Dates
+    published_at = models.DateTimeField(null=True, blank=True)
+    review_deadline = models.DateField(null=True, blank=True)
+    implementation_date = models.DateField(null=True, blank=True)
+    
+    # Additional metadata
+    tags = models.JSONField(default=list, blank=True, help_text="List of tags")
+    attachments = models.JSONField(default=list, blank=True, help_text="List of attachment URLs")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Bill Proposal'
+        verbose_name_plural = 'Bill Proposals'
+    
+    def __str__(self):
+        return f"{self.title} - {self.department.name}"
+    
+    def get_total_votes(self):
+        """Get total number of votes"""
+        return self.support_count + self.oppose_count
+    
+    def get_support_percentage(self):
+        """Get percentage of support votes"""
+        total = self.get_total_votes()
+        if total == 0:
+            return 0
+        return round((self.support_count / total) * 100, 1)
+
+
+class BillComment(models.Model):
+    """Model for comments on bill proposals"""
+    bill = models.ForeignKey(BillProposal, on_delete=models.CASCADE, related_name='comments')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bill_comments')
+    comment_text = models.TextField()
+    likes = models.IntegerField(default=0)
+    is_edited = models.BooleanField(default=False)
+    edited_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Comment on {self.bill.title} by {self.user.get_full_name()}"
+
+
+class BillVote(models.Model):
+    """Model for votes on bill proposals"""
+    VOTE_CHOICES = [
+        ('support', 'Support'),
+        ('oppose', 'Oppose'),
+    ]
+    
+    bill = models.ForeignKey(BillProposal, on_delete=models.CASCADE, related_name='votes')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bill_votes')
+    vote_type = models.CharField(max_length=10, choices=VOTE_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = [['bill', 'user']]
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.user.get_full_name()} - {self.vote_type} on {self.bill.title}"

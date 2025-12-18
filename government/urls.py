@@ -5,6 +5,8 @@ from . import (
     views_announcements,
     views_questions,
     views_officials,
+    views_bills,
+    views_licenses,
 )
 
 urlpatterns = [
@@ -44,5 +46,31 @@ urlpatterns = [
     # PATCH /government/officials/<id>/ - Update official permissions
     path('officials/', views_officials.list_government_officials_view, name='officials_list'),
     path('officials/<int:official_id>/', views_officials.update_government_official_permissions_view, name='official_detail'),
+    
+    # Bill Proposals - RESTful
+    # GET /government/bills/ - List bills
+    # POST /government/bills/ - Create bill
+    # GET /government/bills/<id>/ - Get bill
+    # PATCH /government/bills/<id>/ - Update bill
+    # DELETE /government/bills/<id>/ - Delete bill
+    # GET /government/bills/<id>/comments/ - List comments
+    # POST /government/bills/<id>/comments/ - Create comment
+    # POST /government/bills/<id>/vote/ - Vote on bill
+    # DELETE /government/bills/<id>/vote/ - Remove vote
+    path('bills/', views_bills.bills_list_create_view, name='bills_list_create'),
+    path('bills/<int:bill_id>/', views_bills.bill_detail_view, name='bill_detail'),
+    path('bills/<int:bill_id>/comments/', views_bills.bill_comments_list_create_view, name='bill_comments_list_create'),
+    path('bills/<int:bill_id>/vote/', views_bills.bill_vote_view, name='bill_vote'),
+    path('bills/<int:bill_id>/vote/delete/', views_bills.bill_vote_delete_view, name='bill_vote_delete'),
+    
+    # Business Licenses & Permits - RESTful (Government Management)
+    # GET /government/licenses/ - List all licenses (filtered by town)
+    # GET /government/licenses/<id>/ - Get license details
+    # PATCH /government/licenses/<id>/review/ - Review and approve/reject license
+    # GET /government/licenses/statistics/ - Get license statistics
+    path('licenses/', views_licenses.list_licenses_view, name='government_licenses_list'),
+    path('licenses/<int:license_id>/', views_licenses.get_license_detail_view, name='government_license_detail'),
+    path('licenses/<int:license_id>/review/', views_licenses.review_license_view, name='government_license_review'),
+    path('licenses/statistics/', views_licenses.license_statistics_view, name='government_license_statistics'),
 ]
 

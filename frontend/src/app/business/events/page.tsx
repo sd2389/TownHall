@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { 
@@ -51,6 +52,21 @@ export default function BusinessEvents() {
   const [events, setEvents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isManageAttendeesOpen, setIsManageAttendeesOpen] = useState(false);
+  const [registrations, setRegistrations] = useState<any[]>([]);
+  const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false);
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    event_date: '',
+    event_time: '',
+    location: '',
+    max_attendees: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Fetch events from API
   useEffect(() => {
@@ -124,6 +140,95 @@ export default function BusinessEvents() {
     }
   };
 
+  const fetchEvents = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const filters: any = {};
+      if (filterStatus !== 'all') {
+        filters.status = filterStatus === 'upcoming' ? 'approved' : filterStatus;
+      }
+      const data = await businessEventsApi.list(filters);
+      // Map API data to component format
+      const mappedEvents = data.map((event: any) => ({
+        id: event.id,
+        name: event.title,
+        description: event.description,
+        date: event.event_date,
+        time: event.event_time,
+        location: event.location,
+        status: event.status === 'approved' ? 'upcoming' : event.status,
+        attendees: event.current_attendees || 0,
+        maxAttendees: event.max_attendees,
+        type: "Business Event",
+        category: "Business",
+        price: "Free",
+        organizer: event.business_owner || '',
+        business_name: event.business_name || '',
+        requirements: [],
+        features: [],
+        contact: "",
+        phone: ""
+      }));
+      setEvents(mappedEvents);
+    } catch (err: any) {
+      console.error('Error fetching events:', err);
+      setError(err.message || 'Failed to load events');
+      setEvents([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch events from API
+  useEffect(() => {
+    if (user) {
+      fetchEvents();
+    }
+  }, [user, filterStatus]);
+
+  const handleCreateEvent = async () => {
+    if (!formData.title || !formData.description || !formData.event_date || !formData.event_time || !formData.location) {
+      setError('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setError(null);
+      await businessEventsApi.create({
+        title: formData.title,
+        description: formData.description,
+        event_date: formData.event_date,
+        event_time: formData.event_time,
+        location: formData.location,
+        max_attendees: formData.max_attendees ? parseInt(formData.max_attendees) : undefined,
+      });
+      setIsCreateDialogOpen(false);
+      setFormData({ title: '', description: '', event_date: '', event_time: '', location: '', max_attendees: '' });
+      await fetchEvents();
+    } catch (err: any) {
+      console.error('Error creating event:', err);
+      setError(err.message || 'Failed to create event');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleViewAttendees = async (eventId: number) => {
+    try {
+      setIsLoadingRegistrations(true);
+      const data = await businessEventsApi.getRegistrations(eventId);
+      setRegistrations(data);
+      setIsManageAttendeesOpen(true);
+    } catch (err: any) {
+      console.error('Error fetching registrations:', err);
+      setError(err.message || 'Failed to load registrations');
+    } finally {
+      setIsLoadingRegistrations(false);
+    }
+  };
+
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -155,10 +260,80 @@ export default function BusinessEvents() {
                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Business Events</h1>
                 <p className="text-gray-600 dark:text-gray-300 mt-2">Create and manage your business events and promotions</p>
               </div>
-              <Button className="bg-[#003153] hover:bg-[#003153]/90">
-                <Plus className="h-4 w-4 mr-2" />
-                Create New Event
-              </Button>
+              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-[#003153] hover:bg-[#003153]/90">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create New Event
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Create New Event</DialogTitle>
+                    <DialogDescription>Fill in the details to create a new business event</DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium">Title *</label>
+                      <Input
+                        value={formData.title}
+                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                        placeholder="Event title"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Description *</label>
+                      <Textarea
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        placeholder="Event description"
+                        rows={4}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium">Date *</label>
+                        <Input
+                          type="date"
+                          value={formData.event_date}
+                          onChange={(e) => setFormData({ ...formData, event_date: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Time *</label>
+                        <Input
+                          type="time"
+                          value={formData.event_time}
+                          onChange={(e) => setFormData({ ...formData, event_time: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Location *</label>
+                      <Input
+                        value={formData.location}
+                        onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                        placeholder="Event location"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Max Attendees (optional)</label>
+                      <Input
+                        type="number"
+                        value={formData.max_attendees}
+                        onChange={(e) => setFormData({ ...formData, max_attendees: e.target.value })}
+                        placeholder="Maximum number of attendees"
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>Cancel</Button>
+                      <Button onClick={handleCreateEvent} disabled={isSubmitting} className="bg-[#003153] hover:bg-[#003153]/90">
+                        {isSubmitting ? 'Creating...' : 'Create Event'}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </motion.div>
 
@@ -246,7 +421,11 @@ export default function BusinessEvents() {
                   transition={{ duration: 0.6, delay: 0.5 + index * 0.1 }}
                   whileHover={{ y: -5 }}
                 >
-                  <Dialog>
+                  <Dialog open={isViewDialogOpen && selectedEvent?.id === event.id} onOpenChange={(open) => {
+                    setIsViewDialogOpen(open);
+                    if (open) setSelectedEvent(event);
+                    else setSelectedEvent(null);
+                  }}>
                     <DialogTrigger asChild>
                       <Card className="h-full hover:shadow-xl transition-all duration-300 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-[#003153]/30 cursor-pointer">
                         <CardHeader className="pb-3">
@@ -408,7 +587,7 @@ export default function BusinessEvents() {
                                 <Edit className="h-4 w-4 mr-2" />
                                 Edit Event
                               </Button>
-                              <Button variant="outline">
+                              <Button variant="outline" onClick={() => handleViewAttendees(event.id)}>
                                 <Users className="h-4 w-4 mr-2" />
                                 Manage Attendees
                               </Button>
@@ -447,12 +626,127 @@ export default function BusinessEvents() {
                   ? 'No events match your current filters.' 
                   : 'You don\'t have any events yet.'}
               </p>
-              <Button className="bg-[#003153] hover:bg-[#003153]/90">
-                <Plus className="h-4 w-4 mr-2" />
-                Create Your First Event
-              </Button>
+              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-[#003153] hover:bg-[#003153]/90">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Your First Event
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Create New Event</DialogTitle>
+                    <DialogDescription>Fill in the details to create a new business event</DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium">Title *</label>
+                      <Input
+                        value={formData.title}
+                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                        placeholder="Event title"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Description *</label>
+                      <Textarea
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        placeholder="Event description"
+                        rows={4}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium">Date *</label>
+                        <Input
+                          type="date"
+                          value={formData.event_date}
+                          onChange={(e) => setFormData({ ...formData, event_date: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Time *</label>
+                        <Input
+                          type="time"
+                          value={formData.event_time}
+                          onChange={(e) => setFormData({ ...formData, event_time: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Location *</label>
+                      <Input
+                        value={formData.location}
+                        onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                        placeholder="Event location"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Max Attendees (optional)</label>
+                      <Input
+                        type="number"
+                        value={formData.max_attendees}
+                        onChange={(e) => setFormData({ ...formData, max_attendees: e.target.value })}
+                        placeholder="Maximum number of attendees"
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>Cancel</Button>
+                      <Button onClick={handleCreateEvent} disabled={isSubmitting} className="bg-[#003153] hover:bg-[#003153]/90">
+                        {isSubmitting ? 'Creating...' : 'Create Event'}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </motion.div>
           )}
+
+          {/* Manage Attendees Dialog */}
+          <Dialog open={isManageAttendeesOpen} onOpenChange={setIsManageAttendeesOpen}>
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Event Registrations</DialogTitle>
+                <DialogDescription>View and manage event registrations</DialogDescription>
+              </DialogHeader>
+              {isLoadingRegistrations ? (
+                <div className="text-center py-8">
+                  <Clock3 className="h-8 w-8 animate-spin text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 dark:text-gray-400">Loading registrations...</p>
+                </div>
+              ) : registrations.length === 0 ? (
+                <div className="text-center py-8">
+                  <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 dark:text-gray-400">No registrations yet</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {registrations.map((registration) => (
+                    <Card key={registration.id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-semibold">{registration.citizen_name}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">{registration.citizen_email}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                              Registered: {registration.registered_at}
+                            </p>
+                          </div>
+                          <Badge variant={registration.status === 'registered' ? 'default' : 'secondary'}>
+                            {registration.status}
+                          </Badge>
+                        </div>
+                        {registration.notes && (
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{registration.notes}</p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
       </Layout>

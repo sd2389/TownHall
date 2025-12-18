@@ -172,3 +172,10 @@ def notify_citizen_view(request, complaint_id):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+
+
+
+
+
+
+

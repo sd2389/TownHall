@@ -56,9 +56,10 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Layout from "@/components/layout/Layout";
-import { complaintsApi } from "@/lib/api";
+import { complaintsApi, businessApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import React, { useState, useEffect } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function GovernmentComplaints() {
   const { user } = useAuth();
@@ -67,6 +68,7 @@ export default function GovernmentComplaints() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'open' | 'in_progress' | 'resolved' | 'closed'>('all');
   const [filterPriority, setFilterPriority] = useState<'all' | 'high' | 'medium' | 'low'>('all');
   const [sortBy, setSortBy] = useState<'date' | 'priority' | 'status'>('date');
+  const [complaintType, setComplaintType] = useState<'citizen' | 'business'>('citizen');
   const [complaints, setComplaints] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -86,10 +88,20 @@ export default function GovernmentComplaints() {
         setError(null);
         const statusFilter = filterStatus === 'all' ? undefined : filterStatus;
         const priorityFilter = filterPriority === 'all' ? undefined : filterPriority;
-        const data = await complaintsApi.list({ 
-          status: statusFilter,
-          priority: priorityFilter 
-        });
+        
+        let data;
+        if (complaintType === 'citizen') {
+          data = await complaintsApi.list({ 
+            status: statusFilter,
+            priority: priorityFilter 
+          });
+        } else {
+          data = await businessApi.complaints.list({ 
+            status: statusFilter,
+            priority: priorityFilter 
+          });
+        }
+        
         // Map API response to match frontend format
         const mappedData = data.map((complaint: any) => ({
           id: complaint.id,
@@ -97,17 +109,19 @@ export default function GovernmentComplaints() {
           description: complaint.description,
           status: complaint.status,
           priority: complaint.priority,
-          created: complaint.created,
+          created: complaint.created || complaint.created_at,
           category: complaint.category,
           location: complaint.location || '',
-          assignedTo: complaint.assignedTo || '',
-          estimatedResolution: complaint.estimatedResolution || '',
-          citizenName: complaint.citizenName || "Citizen",
+          assignedTo: complaint.assigned_to || complaint.assignedTo || '',
+          estimatedResolution: complaint.estimated_resolution || complaint.estimatedResolution || '',
+          citizenName: complaint.citizenName || complaint.business_name || (complaintType === 'business' ? 'Business Owner' : 'Citizen'),
           citizenEmail: complaint.citizenEmail || "",
           citizenPhone: complaint.citizenPhone || "",
-          lastUpdated: complaint.created, // Use created date as last updated for now
+          lastUpdated: complaint.created || complaint.created_at,
           comments: complaint.comments || [],
-          attachments: complaint.attachments || []
+          attachments: complaint.attachments || [],
+          complaintType: complaintType,
+          town_name: complaint.town_name || '',
         }));
         setComplaints(mappedData);
       } catch (err: any) {
@@ -122,7 +136,7 @@ export default function GovernmentComplaints() {
     if (user) {
       fetchComplaints();
     }
-  }, [user, filterStatus, filterPriority]);
+  }, [user, filterStatus, filterPriority, complaintType]);
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -179,37 +193,115 @@ export default function GovernmentComplaints() {
     }
   };
 
-  const handleAddComment = async (complaintId: number) => {
-    if (!commentText.trim()) {
-      return;
-    }
-    setIsSubmittingComment(true);
+  const handleUpdateStatus = async (complaintId: number, newStatus: string, newPriority?: string, assignedTo?: string) => {
     try {
-      await complaintsApi.comments.create(complaintId, commentText);
+      if (complaintType === 'citizen') {
+        await complaintsApi.update(complaintId, { 
+          status: newStatus,
+          priority: newPriority,
+          assigned_to: assignedTo
+        });
+      } else {
+        await businessApi.complaints.update(complaintId, { 
+          status: newStatus,
+          priority: newPriority,
+          assigned_to: assignedTo
+        });
+      }
       // Refresh complaints
       const statusFilter = filterStatus === 'all' ? undefined : filterStatus;
       const priorityFilter = filterPriority === 'all' ? undefined : priorityFilter;
-      const data = await complaintsApi.list({ 
-        status: statusFilter,
-        priority: priorityFilter 
-      });
+      
+      let data;
+      if (complaintType === 'citizen') {
+        data = await complaintsApi.list({ 
+          status: statusFilter,
+          priority: priorityFilter 
+        });
+      } else {
+        data = await businessApi.complaints.list({ 
+          status: statusFilter,
+          priority: priorityFilter 
+        });
+      }
+      
       const mappedData = data.map((complaint: any) => ({
         id: complaint.id,
         title: complaint.title,
         description: complaint.description,
         status: complaint.status,
         priority: complaint.priority,
-        created: complaint.created,
+        created: complaint.created || complaint.created_at,
         category: complaint.category,
         location: complaint.location || '',
-        assignedTo: complaint.assignedTo || '',
-        estimatedResolution: complaint.estimatedResolution || '',
-        citizenName: complaint.citizenName || "Citizen",
+        assignedTo: complaint.assigned_to || complaint.assignedTo || '',
+        estimatedResolution: complaint.estimated_resolution || complaint.estimatedResolution || '',
+        citizenName: complaint.citizenName || complaint.business_name || (complaintType === 'business' ? 'Business Owner' : 'Citizen'),
         citizenEmail: complaint.citizenEmail || "",
         citizenPhone: complaint.citizenPhone || "",
-        lastUpdated: complaint.created,
+        lastUpdated: complaint.created || complaint.created_at,
         comments: complaint.comments || [],
-        attachments: complaint.attachments || []
+        attachments: complaint.attachments || [],
+        complaintType: complaintType,
+        town_name: complaint.town_name || '',
+      }));
+      setComplaints(mappedData);
+    } catch (err: any) {
+      console.error('Error updating complaint:', err);
+      alert(err.message || 'Failed to update complaint');
+    }
+  };
+
+  const handleAddComment = async (complaintId: number) => {
+    if (!commentText.trim()) {
+      return;
+    }
+    setIsSubmittingComment(true);
+    try {
+      if (complaintType === 'citizen') {
+        await complaintsApi.comments.create(complaintId, commentText);
+      } else {
+        // Business complaints don't have comments API yet
+        alert('Comments for business complaints coming soon');
+        setIsCommentDialogOpen(false);
+        return;
+      }
+      // Refresh complaints
+      const statusFilter = filterStatus === 'all' ? undefined : filterStatus;
+      const priorityFilter = filterPriority === 'all' ? undefined : priorityFilter;
+      
+      let data;
+      if (complaintType === 'citizen') {
+        data = await complaintsApi.list({ 
+          status: statusFilter,
+          priority: priorityFilter 
+        });
+      } else {
+        data = await businessApi.complaints.list({ 
+          status: statusFilter,
+          priority: priorityFilter 
+        });
+      }
+      
+      const mappedData = data.map((complaint: any) => ({
+        id: complaint.id,
+        title: complaint.title,
+        description: complaint.description,
+        status: complaint.status,
+        priority: complaint.priority,
+        created: complaint.created || complaint.created_at,
+        category: complaint.category,
+        location: complaint.location || '',
+        assignedTo: complaint.assigned_to || complaint.assignedTo || '',
+        estimatedResolution: complaint.estimated_resolution || complaint.estimatedResolution || '',
+        citizenName: complaint.citizenName || complaint.business_name || (complaintType === 'business' ? 'Business Owner' : 'Citizen'),
+        citizenEmail: complaint.citizenEmail || "",
+        citizenPhone: complaint.citizenPhone || "",
+        lastUpdated: complaint.created || complaint.created_at,
+        comments: complaint.comments || [],
+        attachments: complaint.attachments || [],
+        complaintType: complaintType,
+        town_name: complaint.town_name || '',
       }));
       setComplaints(mappedData);
       setCommentText("");
@@ -225,39 +317,58 @@ export default function GovernmentComplaints() {
   const handleNotifyCitizen = async (complaintId: number) => {
     setIsSubmittingNotification(true);
     try {
-      await complaintsApi.notifications.create(complaintId, notificationMessage || undefined);
+      if (complaintType === 'citizen') {
+        await complaintsApi.notifications.create(complaintId, notificationMessage || undefined);
+      } else {
+        // Business complaints don't have notifications API yet
+        alert('Notifications for business complaints coming soon');
+        setIsNotifyDialogOpen(false);
+        return;
+      }
       // Refresh complaints
       const statusFilter = filterStatus === 'all' ? undefined : filterStatus;
       const priorityFilter = filterPriority === 'all' ? undefined : priorityFilter;
-      const data = await complaintsApi.list({ 
-        status: statusFilter,
-        priority: priorityFilter 
-      });
+      
+      let data;
+      if (complaintType === 'citizen') {
+        data = await complaintsApi.list({ 
+          status: statusFilter,
+          priority: priorityFilter 
+        });
+      } else {
+        data = await businessApi.complaints.list({ 
+          status: statusFilter,
+          priority: priorityFilter 
+        });
+      }
+      
       const mappedData = data.map((complaint: any) => ({
         id: complaint.id,
         title: complaint.title,
         description: complaint.description,
         status: complaint.status,
         priority: complaint.priority,
-        created: complaint.created,
+        created: complaint.created || complaint.created_at,
         category: complaint.category,
         location: complaint.location || '',
-        assignedTo: complaint.assignedTo || '',
-        estimatedResolution: complaint.estimatedResolution || '',
-        citizenName: complaint.citizenName || "Citizen",
+        assignedTo: complaint.assigned_to || complaint.assignedTo || '',
+        estimatedResolution: complaint.estimated_resolution || complaint.estimatedResolution || '',
+        citizenName: complaint.citizenName || complaint.business_name || (complaintType === 'business' ? 'Business Owner' : 'Citizen'),
         citizenEmail: complaint.citizenEmail || "",
         citizenPhone: complaint.citizenPhone || "",
-        lastUpdated: complaint.created,
+        lastUpdated: complaint.created || complaint.created_at,
         comments: complaint.comments || [],
-        attachments: complaint.attachments || []
+        attachments: complaint.attachments || [],
+        complaintType: complaintType,
+        town_name: complaint.town_name || '',
       }));
       setComplaints(mappedData);
       setNotificationMessage("");
       setIsNotifyDialogOpen(false);
-      alert('Citizen notified successfully!');
+      alert(complaintType === 'citizen' ? 'Citizen notified successfully!' : 'Business owner notified successfully!');
     } catch (err: any) {
-      console.error('Error notifying citizen:', err);
-      alert(err.message || 'Failed to notify citizen');
+      console.error('Error notifying:', err);
+      alert(err.message || 'Failed to send notification');
     } finally {
       setIsSubmittingNotification(false);
     }
@@ -294,7 +405,7 @@ export default function GovernmentComplaints() {
                     </div>
                     <div>
                       <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">Complaints Management</h1>
-                      <p className="text-slate-600 dark:text-slate-300 text-sm mt-1">Manage and track citizen complaints and issues</p>
+                      <p className="text-slate-600 dark:text-slate-300 text-sm mt-1">Manage and track citizen and business complaints</p>
                     </div>
                   </div>
                 </div>
@@ -369,6 +480,21 @@ export default function GovernmentComplaints() {
                 </div>
               </CardContent>
             </Card>
+          </motion.div>
+
+          {/* Complaint Type Tabs */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="mb-6"
+          >
+            <Tabs value={complaintType} onValueChange={(value) => setComplaintType(value as 'citizen' | 'business')}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="citizen">Citizen Complaints</TabsTrigger>
+                <TabsTrigger value="business">Business Complaints</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </motion.div>
 
           {/* Complaints List */}
@@ -662,32 +788,46 @@ export default function GovernmentComplaints() {
 
                         {/* Actions */}
                         <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-                          <Button className="bg-[#003153] hover:bg-[#003153]/90 text-white border-0">
-                            <Edit className="h-4 w-4 mr-2" />
-                            Update Status
-                          </Button>
-                          <Button 
-                            variant="outline"
-                            onClick={() => {
-                              setCurrentComplaintId(complaint.id);
-                              setNotificationMessage("");
-                              setIsNotifyDialogOpen(true);
-                            }}
+                          <Select 
+                            value={complaint.status} 
+                            onValueChange={(value) => handleUpdateStatus(complaint.id, value)}
                           >
-                            <Send className="h-4 w-4 mr-2" />
-                            Notify Citizen
-                          </Button>
-                          <Button 
-                            variant="outline"
-                            onClick={() => {
-                              setCurrentComplaintId(complaint.id);
-                              setCommentText("");
-                              setIsCommentDialogOpen(true);
-                            }}
-                          >
-                            <MessageSquare className="h-4 w-4 mr-2" />
-                            Add Comment
-                          </Button>
+                            <SelectTrigger className="w-full sm:w-auto">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pending">Pending</SelectItem>
+                              <SelectItem value="in_progress">In Progress</SelectItem>
+                              <SelectItem value="resolved">Resolved</SelectItem>
+                              <SelectItem value="closed">Closed</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {complaintType === 'citizen' && (
+                            <>
+                              <Button 
+                                variant="outline"
+                                onClick={() => {
+                                  setCurrentComplaintId(complaint.id);
+                                  setNotificationMessage("");
+                                  setIsNotifyDialogOpen(true);
+                                }}
+                              >
+                                <Send className="h-4 w-4 mr-2" />
+                                Notify {complaintType === 'citizen' ? 'Citizen' : 'Business'}
+                              </Button>
+                              <Button 
+                                variant="outline"
+                                onClick={() => {
+                                  setCurrentComplaintId(complaint.id);
+                                  setCommentText("");
+                                  setIsCommentDialogOpen(true);
+                                }}
+                              >
+                                <MessageSquare className="h-4 w-4 mr-2" />
+                                Add Comment
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </DialogContent>

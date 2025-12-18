@@ -38,6 +38,7 @@ import Layout from "@/components/layout/Layout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import { businessApi } from "@/lib/api";
+import { getLicenseRequirements, getLicenseDocuments, getLicenseConditions } from "@/lib/licenseData";
 import React, { useState, useEffect } from "react";
 
 export default function BusinessPermits() {
@@ -66,16 +67,23 @@ export default function BusinessPermits() {
           id: license.id,
           name: license.license_type,
           type: license.license_type,
+          license_number: license.license_number || '',
           status: license.status,
           applicationDate: license.created_at,
           approvalDate: license.issue_date || null,
           expiryDate: license.expiry_date || null,
-          fee: "N/A", // Fee not in API yet
+          fee: license.fee ? `$${parseFloat(license.fee).toFixed(2)}` : 'N/A',
+          fee_paid: license.fee_paid || false,
           description: license.description || '',
-          location: "", // Not in API yet
-          requirements: [], // Not in API yet
-          documents: [], // Not in API yet
-          conditions: [] // Not in API yet
+          review_comment: license.review_comment || '',
+          review_date: license.review_date || null,
+          reviewed_by: license.reviewed_by || null,
+          attachments: license.attachments || [],
+          renewal_required: license.renewal_required || false,
+          location: license.business_address || "",
+          requirements: license.requirements || getLicenseRequirements(license.license_type),
+          documents: license.documents || license.attachments || getLicenseDocuments(license.license_type),
+          conditions: license.conditions || getLicenseConditions(license.license_type)
         }));
         setPermits(mappedPermits);
       } catch (err: any) {
@@ -282,9 +290,19 @@ export default function BusinessPermits() {
                               </div>
                             )}
                             <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-500 dark:text-gray-400">Permit #:</span>
+                              <span className="font-medium text-gray-900 dark:text-white">{permit.license_number || 'N/A'}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm">
                               <span className="text-gray-500 dark:text-gray-400">Fee:</span>
                               <span className="font-medium text-gray-900 dark:text-white">{permit.fee}</span>
                             </div>
+                            {permit.fee_paid && (
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-green-600 dark:text-green-400">Payment:</span>
+                                <span className="font-medium text-green-600 dark:text-green-400">Paid</span>
+                              </div>
+                            )}
                           </div>
                           
                           <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
@@ -343,21 +361,78 @@ export default function BusinessPermits() {
                               </div>
                             )}
                             <div>
+                              <span className="font-medium text-gray-900 dark:text-white">Permit Number:</span>
+                              <p className="text-gray-600 dark:text-gray-300">{permit.license_number || 'N/A'}</p>
+                            </div>
+                            <div>
                               <span className="font-medium text-gray-900 dark:text-white">Fee:</span>
                               <p className="text-gray-600 dark:text-gray-300">{permit.fee}</p>
                             </div>
+                            {permit.fee_paid && (
+                              <div>
+                                <span className="font-medium text-green-600 dark:text-green-400">Payment Status:</span>
+                                <p className="text-green-600 dark:text-green-400">Paid</p>
+                              </div>
+                            )}
+                            {permit.renewal_required && (
+                              <div>
+                                <span className="font-medium text-orange-600 dark:text-orange-400">Renewal:</span>
+                                <p className="text-orange-600 dark:text-orange-400">Required</p>
+                              </div>
+                            )}
                           </div>
                         </div>
 
                         {/* Description and Location */}
                         <div>
                           <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Description</h4>
-                          <p className="text-gray-600 dark:text-gray-300 mb-4">{permit.description}</p>
-                          <div className="flex items-center text-gray-600 dark:text-gray-300">
-                            <MapPin className="h-4 w-4 mr-2" />
-                            {permit.location}
-                          </div>
+                          <p className="text-gray-600 dark:text-gray-300 mb-4">{permit.description || 'No description provided'}</p>
+                          {permit.location && (
+                            <div className="flex items-center text-gray-600 dark:text-gray-300">
+                              <MapPin className="h-4 w-4 mr-2" />
+                              {permit.location}
+                            </div>
+                          )}
                         </div>
+
+                        {/* Government Review Information */}
+                        {permit.review_comment && (
+                          <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                            <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Government Review</h4>
+                            <p className="text-gray-600 dark:text-gray-300 mb-2">{permit.review_comment}</p>
+                            {permit.reviewed_by && (
+                              <p className="text-sm text-gray-500 dark:text-gray-400">
+                                Reviewed by: {permit.reviewed_by.name} ({permit.reviewed_by.position})
+                              </p>
+                            )}
+                            {permit.review_date && (
+                              <p className="text-sm text-gray-500 dark:text-gray-400">
+                                Review Date: {new Date(permit.review_date).toLocaleDateString()}
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Attachments */}
+                        {permit.attachments && permit.attachments.length > 0 && (
+                          <div>
+                            <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Attachments</h4>
+                            <div className="space-y-2">
+                              {permit.attachments.map((attachment: string, index: number) => (
+                                <a
+                                  key={index}
+                                  href={attachment}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center text-blue-600 dark:text-blue-400 hover:underline"
+                                >
+                                  <FileText className="h-4 w-4 mr-2" />
+                                  Attachment {index + 1}
+                                </a>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
                         {/* Requirements */}
                         <div>

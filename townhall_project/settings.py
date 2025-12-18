@@ -212,3 +212,15 @@ else:
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
+
+# Session Configuration
+# Session cookie age: 12 hours (43200 seconds)
+SESSION_COOKIE_AGE = 43200  # 12 hours
+SESSION_SAVE_EVERY_REQUEST = True  # Extend session on each request
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # Keep session after browser close
+SESSION_COOKIE_HTTPONLY = True  # Prevent JavaScript access to session cookie
+SESSION_COOKIE_SAMESITE = 'Lax'  # CSRF protection
+
+# Token Authentication (DRF tokens don't expire by default)
+# If you want token expiration, you would need to implement custom token handling
+# For now, tokens persist until explicitly deleted (on logout)

@@ -45,12 +45,15 @@ import {
   ThumbsDown,
   User,
   Building2,
-  Zap
+  Zap,
+  UserPlus,
+  RefreshCw
 } from "lucide-react";
+import Link from "next/link";
 import Layout from "@/components/layout/Layout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
-import { announcementsApi, complaintsApi } from "@/lib/api";
+import { announcementsApi, complaintsApi, billsApi, businessEventsApi } from "@/lib/api";
 import React, { useState, useEffect } from "react";
 
 export default function CitizenPortal() {
@@ -60,58 +63,85 @@ export default function CitizenPortal() {
   const [newComment, setNewComment] = useState("");
   const [userVotes, setUserVotes] = useState<{[key: number]: 'support' | 'oppose' | null}>({});
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
-  const [filterStatus, setFilterStatus] = useState<'all' | 'open' | 'closed'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'published' | 'under_review' | 'approved'>('all');
   const [proposals, setProposals] = useState<any[]>([]);
   const [complaints, setComplaints] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [isLoadingComplaints, setIsLoadingComplaints] = useState(true);
   const [isLoadingAnnouncements, setIsLoadingAnnouncements] = useState(true);
+  const [isLoadingBills, setIsLoadingBills] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [billsComments, setBillsComments] = useState<{[key: number]: any[]}>({});
+  const [isLoadingComments, setIsLoadingComments] = useState<{[key: number]: boolean}>({});
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<any>(null);
   const [openAnnouncementDialog, setOpenAnnouncementDialog] = useState<number | null>(null);
   const [announcementQuestions, setAnnouncementQuestions] = useState<any[]>([]);
   const [newQuestion, setNewQuestion] = useState("");
   const [isSubmittingQuestion, setIsSubmittingQuestion] = useState(false);
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
+  const [events, setEvents] = useState<any[]>([]);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(true);
+  const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
+  const [isRegistering, setIsRegistering] = useState<number | null>(null);
+  const [registrationNotes, setRegistrationNotes] = useState("");
 
   // Voting functionality
-  const handleVote = (proposalId: number, voteType: 'support' | 'oppose') => {
-    const currentVote = userVotes[proposalId];
-    const newVote = currentVote === voteType ? null : voteType;
-    
-    setUserVotes(prev => ({
-      ...prev,
-      [proposalId]: newVote
-    }));
-
-    // Update proposal counts
-    setProposals(prev => prev.map(proposal => {
-      if (proposal.id === proposalId) {
-        let newSupportCount = proposal.supportCount;
-        let newOpposeCount = proposal.opposeCount;
-
-        // Remove previous vote
-        if (currentVote === 'support') {
-          newSupportCount = Math.max(0, newSupportCount - 1);
-        } else if (currentVote === 'oppose') {
-          newOpposeCount = Math.max(0, newOpposeCount - 1);
-        }
-
-        // Add new vote
-        if (newVote === 'support') {
-          newSupportCount += 1;
-        } else if (newVote === 'oppose') {
-          newOpposeCount += 1;
-        }
-
-        return {
-          ...proposal,
-          supportCount: newSupportCount,
-          opposeCount: newOpposeCount
-        };
+  const handleVote = async (proposalId: number, voteType: 'support' | 'oppose') => {
+    try {
+      const currentVote = userVotes[proposalId];
+      
+      // If clicking the same vote type, remove the vote
+      if (currentVote === voteType) {
+        await billsApi.removeVote(proposalId);
+        setUserVotes(prev => ({
+          ...prev,
+          [proposalId]: null
+        }));
+      } else {
+        await billsApi.vote(proposalId, voteType);
+        setUserVotes(prev => ({
+          ...prev,
+          [proposalId]: voteType
+        }));
       }
-      return proposal;
-    }));
+
+      // Refresh bills to get updated vote counts
+      const filters: any = {};
+      if (filterStatus !== 'all') filters.status = filterStatus;
+      filters.sort = '-created_at';
+      const billsData = await billsApi.list(filters);
+      
+      // Map bills to proposals format
+      const mappedProposals = billsData.map((bill: any) => ({
+        id: bill.id,
+        title: bill.title,
+        summary: bill.summary || bill.description?.substring(0, 200) || '',
+        fullText: bill.description || '',
+        status: bill.status === 'published' || bill.status === 'under_review' ? 'open' : 'closed',
+        proposer: bill.created_by || 'Government Official',
+        department: bill.department || 'General',
+        date: bill.created_at || bill.published_at || new Date().toISOString().split('T')[0],
+        supportCount: bill.support_count || 0,
+        opposeCount: bill.oppose_count || 0,
+        comments: billsComments[bill.id] || [],
+        user_vote: bill.user_vote || null,
+      }));
+      
+      setProposals(mappedProposals);
+      
+      // Update user votes from API response
+      const votesMap: {[key: number]: 'support' | 'oppose' | null} = {};
+      billsData.forEach((bill: any) => {
+        if (bill.user_vote) {
+          votesMap[bill.id] = bill.user_vote;
+        }
+      });
+      setUserVotes(votesMap);
+    } catch (err: any) {
+      console.error('Error voting:', err);
+      setError(err.message || 'Failed to vote');
+    }
   };
 
   // Fetch questions for an announcement
@@ -150,31 +180,43 @@ export default function CitizenPortal() {
   const handleSubmitComment = async (proposalId: number) => {
     if (!newComment.trim()) return;
 
-    setIsSubmittingComment(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      const newCommentObj = {
-        id: Date.now(),
-        author: "Maria Lopez",
-        text: newComment.trim(),
-        date: new Date().toISOString().split('T')[0],
-        likes: 0
-      };
-
+    try {
+      setIsSubmittingComment(true);
+      await billsApi.addComment(proposalId, newComment.trim());
+      
+      // Refresh comments for this bill
+      const comments = await billsApi.getComments(proposalId);
+      const mappedComments = comments.map((comment: any) => ({
+        id: comment.id,
+        author: comment.author,
+        text: comment.comment_text,
+        date: comment.created_at,
+        likes: comment.likes || 0,
+      }));
+      
+      setBillsComments(prev => ({
+        ...prev,
+        [proposalId]: mappedComments
+      }));
+      
+      // Update proposal with new comments
       setProposals(prev => prev.map(proposal => {
         if (proposal.id === proposalId) {
           return {
             ...proposal,
-            comments: [...proposal.comments, newCommentObj]
+            comments: mappedComments,
           };
         }
         return proposal;
       }));
 
       setNewComment("");
+    } catch (err: any) {
+      console.error('Error submitting comment:', err);
+      setError(err.message || 'Failed to submit comment');
+    } finally {
       setIsSubmittingComment(false);
-    }, 1000);
+    }
   };
 
   // Like comment functionality
@@ -194,11 +236,59 @@ export default function CitizenPortal() {
     }));
   };
 
-  // Filter functionality
+  // Filter functionality - bills are already filtered by API, but we can add client-side filtering if needed
   const filteredProposals = proposals.filter(proposal => {
     if (filterStatus === 'all') return true;
-    return proposal.status === filterStatus;
+    // Map filter status to proposal status
+    if (filterStatus === 'published' || filterStatus === 'under_review') {
+      return proposal.status === 'open';
+    }
+    if (filterStatus === 'approved') {
+      return proposal.status === 'closed';
+    }
+    return true;
   });
+  
+  // Fetch comments for a bill when dialog opens
+  const fetchBillComments = async (billId: number) => {
+    if (billsComments[billId]) return; // Already loaded
+    
+    try {
+      setIsLoadingComments(prev => ({ ...prev, [billId]: true }));
+      const comments = await billsApi.getComments(billId);
+      setBillsComments(prev => ({
+        ...prev,
+        [billId]: comments.map((comment: any) => ({
+          id: comment.id,
+          author: comment.author,
+          text: comment.comment_text,
+          date: comment.created_at,
+          likes: comment.likes || 0,
+        }))
+      }));
+      
+      // Update proposal with comments
+      setProposals(prev => prev.map(proposal => {
+        if (proposal.id === billId) {
+          return {
+            ...proposal,
+            comments: comments.map((comment: any) => ({
+              id: comment.id,
+              author: comment.author,
+              text: comment.comment_text,
+              date: comment.created_at,
+              likes: comment.likes || 0,
+            }))
+          };
+        }
+        return proposal;
+      }));
+    } catch (err: any) {
+      console.error('Error fetching comments:', err);
+    } finally {
+      setIsLoadingComments(prev => ({ ...prev, [billId]: false }));
+    }
+  };
 
   // Fetch complaints from API
   useEffect(() => {
@@ -269,23 +359,123 @@ export default function CitizenPortal() {
     }
   }, [user]);
 
-  // Proposals will be fetched from API when that feature is implemented
-  // For now, proposals array is empty and will be populated from API
+  // Fetch bills from API
   useEffect(() => {
-    // TODO: Implement proposals API endpoint
-    // const fetchProposals = async () => {
-    //   try {
-    //     const data = await proposalsApi.list();
-    //     setProposals(data);
-    //   } catch (err: any) {
-    //     console.error('Error fetching proposals:', err);
-    //   }
-    // };
-    // if (user) {
-    //   fetchProposals();
-    // }
-    setProposals([]);
+    const fetchBills = async () => {
+      try {
+        setIsLoadingBills(true);
+        setError(null);
+        const filters: any = {};
+        if (filterStatus !== 'all') filters.status = filterStatus;
+        filters.sort = '-created_at';
+        
+        const billsData = await billsApi.list(filters);
+        
+        // Map bills to proposals format for the dashboard
+        const mappedProposals = billsData.map((bill: any) => ({
+          id: bill.id,
+          title: bill.title,
+          summary: bill.summary || bill.description?.substring(0, 200) || '',
+          fullText: bill.description || '',
+          status: bill.status === 'published' || bill.status === 'under_review' ? 'open' : 'closed',
+          proposer: bill.created_by || 'Government Official',
+          department: bill.department || 'General',
+          date: bill.created_at || bill.published_at || new Date().toISOString().split('T')[0],
+          supportCount: bill.support_count || 0,
+          opposeCount: bill.oppose_count || 0,
+          comments: billsComments[bill.id] || [],
+          user_vote: bill.user_vote || null,
+        }));
+        
+        setProposals(mappedProposals);
+        
+        // Initialize user votes from API response
+        const votesMap: {[key: number]: 'support' | 'oppose' | null} = {};
+        billsData.forEach((bill: any) => {
+          if (bill.user_vote) {
+            votesMap[bill.id] = bill.user_vote;
+          }
+        });
+        setUserVotes(votesMap);
+      } catch (err: any) {
+        console.error('Error fetching bills:', err);
+        setError(err.message || 'Failed to load bills');
+        setProposals([]);
+      } finally {
+        setIsLoadingBills(false);
+      }
+    };
+
+    if (user) {
+      fetchBills();
+    }
+  }, [user, filterStatus]);
+
+  // Fetch business events
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        setIsLoadingEvents(true);
+        setError(null);
+        const data = await businessEventsApi.list({ status: 'approved' });
+        const mappedEvents = data.map((event: any) => ({
+          id: event.id,
+          title: event.title,
+          description: event.description,
+          date: event.event_date,
+          time: event.event_time,
+          location: event.location,
+          status: event.status,
+          attendees: event.current_attendees || 0,
+          maxAttendees: event.max_attendees,
+          business_name: event.business_name || '',
+          business_owner: event.business_owner || '',
+        }));
+        setEvents(mappedEvents);
+      } catch (err: any) {
+        console.error('Error fetching events:', err);
+        setError(err.message || 'Failed to load events');
+        setEvents([]);
+      } finally {
+        setIsLoadingEvents(false);
+      }
+    };
+
+    if (user) {
+      fetchEvents();
+    }
   }, [user]);
+
+  const handleRegisterForEvent = async (eventId: number) => {
+    try {
+      setIsRegistering(eventId);
+      setError(null);
+      await businessEventsApi.register(eventId, registrationNotes);
+      setRegistrationNotes("");
+      setIsEventDialogOpen(false);
+      // Refresh events
+      const data = await businessEventsApi.list({ status: 'approved' });
+      const mappedEvents = data.map((event: any) => ({
+        id: event.id,
+        title: event.title,
+        description: event.description,
+        date: event.event_date,
+        time: event.event_time,
+        location: event.location,
+        status: event.status,
+        attendees: event.current_attendees || 0,
+        maxAttendees: event.max_attendees,
+        business_name: event.business_name || '',
+        business_owner: event.business_owner || '',
+      }));
+      setEvents(mappedEvents);
+    } catch (err: any) {
+      console.error('Error registering for event:', err);
+      setError(err.message || 'Failed to register for event');
+    } finally {
+      setIsRegistering(null);
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -359,12 +549,98 @@ export default function CitizenPortal() {
             className="mb-8"
           >
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
-            {[
-              { title: "Total Complaints", value: "12", icon: FileText, color: "from-blue-500 to-blue-600", bgGradient: "from-blue-50 to-blue-100/50", change: "+2 this week", trend: "up", subtitle: "Active issues" },
-              { title: "Resolved", value: "8", icon: CheckCircle, color: "from-green-500 to-green-600", bgGradient: "from-green-50 to-green-100/50", change: "67% success rate", trend: "neutral", subtitle: "Completed" },
-              { title: "In Progress", value: "3", icon: Clock, color: "from-amber-500 to-amber-600", bgGradient: "from-amber-50 to-amber-100/50", change: "Avg 3 days", trend: "neutral", subtitle: "Pending" },
-              { title: "Community Score", value: "4.8", icon: Star, color: "from-purple-500 to-purple-600", bgGradient: "from-purple-50 to-purple-100/50", change: "Excellent", trend: "neutral", subtitle: "Rating" }
-            ].map((stat, index) => {
+            {(() => {
+              // Calculate stats dynamically from complaints
+              const totalComplaints = complaints.length;
+              const resolvedComplaints = complaints.filter(c => 
+                c.status === 'resolved' || c.status === 'closed' || c.status === 'Resolved' || c.status === 'Closed'
+              ).length;
+              const inProgressComplaints = complaints.filter(c => 
+                c.status === 'in_progress' || c.status === 'pending' || c.status === 'In Progress' || c.status === 'Pending'
+              ).length;
+              
+              // Calculate success rate
+              const successRate = totalComplaints > 0 ? Math.round((resolvedComplaints / totalComplaints) * 100) : 0;
+              
+              // Calculate average days for in-progress complaints
+              const now = new Date();
+              const avgDays = inProgressComplaints > 0 
+                ? Math.round(
+                    complaints
+                      .filter(c => c.status === 'in_progress' || c.status === 'pending' || c.status === 'In Progress' || c.status === 'Pending')
+                      .reduce((sum, c) => {
+                        const createdDate = new Date(c.created || c.created_at || now);
+                        const daysDiff = Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+                        return sum + daysDiff;
+                      }, 0) / inProgressComplaints
+                  )
+                : 0;
+              
+              // Calculate community score based on resolution rate and satisfaction
+              // Base score: 3.0 + (success rate / 100) * 2.0, capped at 5.0
+              const communityScore = totalComplaints > 0 
+                ? Math.min(5.0, (3.0 + (successRate / 100) * 2.0)).toFixed(1)
+                : '0.0';
+              
+              // Determine community score label
+              const getScoreLabel = (score: number) => {
+                if (score >= 4.5) return 'Excellent';
+                if (score >= 4.0) return 'Very Good';
+                if (score >= 3.5) return 'Good';
+                if (score >= 3.0) return 'Fair';
+                return 'Needs Improvement';
+              };
+              
+              // Count complaints created this week
+              const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+              const thisWeekComplaints = complaints.filter(c => {
+                const createdDate = new Date(c.created || c.created_at || now);
+                return createdDate >= oneWeekAgo;
+              }).length;
+              
+              return [
+                { 
+                  title: "Total Complaints", 
+                  value: totalComplaints.toString(), 
+                  icon: FileText, 
+                  color: "from-blue-500 to-blue-600", 
+                  bgGradient: "from-blue-50 to-blue-100/50", 
+                  change: thisWeekComplaints > 0 ? `+${thisWeekComplaints} this week` : "No new complaints", 
+                  trend: thisWeekComplaints > 0 ? "up" : "neutral", 
+                  subtitle: "Active issues" 
+                },
+                { 
+                  title: "Resolved", 
+                  value: resolvedComplaints.toString(), 
+                  icon: CheckCircle, 
+                  color: "from-green-500 to-green-600", 
+                  bgGradient: "from-green-50 to-green-100/50", 
+                  change: `${successRate}% success rate`, 
+                  trend: "neutral", 
+                  subtitle: "Completed" 
+                },
+                { 
+                  title: "In Progress", 
+                  value: inProgressComplaints.toString(), 
+                  icon: Clock, 
+                  color: "from-amber-500 to-amber-600", 
+                  bgGradient: "from-amber-50 to-amber-100/50", 
+                  change: avgDays > 0 ? `Avg ${avgDays} days` : "No pending", 
+                  trend: "neutral", 
+                  subtitle: "Pending" 
+                },
+                { 
+                  title: "Community Score", 
+                  value: communityScore, 
+                  icon: Star, 
+                  color: "from-purple-500 to-purple-600", 
+                  bgGradient: "from-purple-50 to-purple-100/50", 
+                  change: getScoreLabel(parseFloat(communityScore)), 
+                  trend: "neutral", 
+                  subtitle: "Rating" 
+                }
+              ];
+            })().map((stat, index) => {
               const Icon = stat.icon;
               return (
                 <motion.div
@@ -643,20 +919,34 @@ export default function CitizenPortal() {
                           <CardDescription className="text-sm text-gray-600 dark:text-gray-300">Review and participate in government proposals</CardDescription>
                         </div>
                       </div>
-                      <Select value={filterStatus} onValueChange={(value: 'all' | 'open' | 'closed') => setFilterStatus(value)}>
-                        <SelectTrigger className="w-40 border-2">
-                          <SelectValue placeholder="Filter by status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Proposals</SelectItem>
-                          <SelectItem value="open">Open Only</SelectItem>
-                          <SelectItem value="closed">Closed Only</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="flex items-center gap-3">
+                        <Select value={filterStatus} onValueChange={(value: 'all' | 'published' | 'under_review' | 'approved') => setFilterStatus(value)}>
+                          <SelectTrigger className="w-40 border-2">
+                            <SelectValue placeholder="Filter by status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Proposals</SelectItem>
+                            <SelectItem value="published">Published</SelectItem>
+                            <SelectItem value="under_review">Under Review</SelectItem>
+                            <SelectItem value="approved">Approved</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Link href="/citizen/bills">
+                          <Button variant="outline" size="sm" className="border-2">
+                            <ArrowRight className="h-4 w-4 mr-2" />
+                            View All Bills
+                          </Button>
+                        </Link>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="p-6 space-y-4">
-                    {filteredProposals.length === 0 ? (
+                    {isLoadingBills ? (
+                      <div className="text-center py-12">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#003153] mx-auto mb-4"></div>
+                        <p className="text-gray-600 dark:text-gray-400">Loading bills...</p>
+                      </div>
+                    ) : filteredProposals.length === 0 ? (
                       <div className="text-center py-8">
                         <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No Proposals Found</h3>
@@ -668,7 +958,14 @@ export default function CitizenPortal() {
                       </div>
                     ) : (
                       filteredProposals.map((proposal) => (
-                      <Dialog key={proposal.id}>
+                      <Dialog 
+                        key={proposal.id}
+                        onOpenChange={(open) => {
+                          if (open) {
+                            fetchBillComments(proposal.id);
+                          }
+                        }}
+                      >
                         <DialogTrigger asChild>
                           <motion.div
                             whileHover={{ y: -4 }}
@@ -712,10 +1009,10 @@ export default function CitizenPortal() {
                                         ? 'bg-[#003153] hover:bg-[#003153]/90 text-white' 
                                         : 'bg-green-50 hover:bg-green-100 text-green-700 border-green-200'
                                     }`}
-                                    onClick={(e) => {
+                                    onClick={async (e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
-                                      handleVote(proposal.id, 'support');
+                                      await handleVote(proposal.id, 'support');
                                     }}
                                   >
                                     <ThumbsUpIcon className="h-4 w-4 mr-1" />
@@ -728,10 +1025,10 @@ export default function CitizenPortal() {
                                         ? 'bg-red-600 hover:bg-red-700 text-white' 
                                         : 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200'
                                     }`}
-                                    onClick={(e) => {
+                                    onClick={async (e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
-                                      handleVote(proposal.id, 'oppose');
+                                      await handleVote(proposal.id, 'oppose');
                                     }}
                                   >
                                     <ThumbsDown className="h-4 w-4 mr-1" />
@@ -794,7 +1091,7 @@ export default function CitizenPortal() {
                                   size="sm"
                                   variant="outline"
                                   className={`h-10 px-6 text-sm font-medium ${userVotes[proposal.id] === 'support' ? 'bg-[#003153] hover:bg-[#003153]/90 text-white border-[#003153]' : 'hover:bg-[#003153]/10 hover:text-[#003153] border-[#003153]/20 text-gray-700'}`}
-                                  onClick={() => handleVote(proposal.id, 'support')}
+                                  onClick={async () => await handleVote(proposal.id, 'support')}
                                 >
                                   <ThumbsUpIcon className="h-4 w-4 mr-2" />
                                   Support ({proposal.supportCount})
@@ -803,7 +1100,7 @@ export default function CitizenPortal() {
                                   size="sm"
                                   variant="outline"
                                   className={`h-10 px-6 text-sm font-medium ${userVotes[proposal.id] === 'oppose' ? 'bg-red-600 hover:bg-red-700 text-white border-red-600' : 'hover:bg-red-50 hover:text-red-600 border-red-200 text-gray-700'}`}
-                                  onClick={() => handleVote(proposal.id, 'oppose')}
+                                  onClick={async () => await handleVote(proposal.id, 'oppose')}
                                 >
                                   <ThumbsDown className="h-4 w-4 mr-2" />
                                   Oppose ({proposal.opposeCount})
@@ -813,9 +1110,18 @@ export default function CitizenPortal() {
 
                             {/* Comments Section */}
                             <div>
-                              <h4 className="font-semibold text-gray-900 dark:text-white mb-3">Comments ({proposal.comments.length})</h4>
-                              <div className="space-y-3 mb-4">
-                                {proposal.comments.map((comment: any) => (
+                              <h4 className="font-semibold text-gray-900 dark:text-white mb-3">
+                                Comments ({proposal.comments?.length || 0})
+                              </h4>
+                              {isLoadingComments[proposal.id] ? (
+                                <div className="text-center py-4">
+                                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#003153] mx-auto"></div>
+                                  <p className="text-gray-500 dark:text-gray-400 text-sm mt-2">Loading comments...</p>
+                                </div>
+                              ) : (
+                                <div className="space-y-3 mb-4">
+                                  {proposal.comments && proposal.comments.length > 0 ? (
+                                    proposal.comments.map((comment: any) => (
                                   <div key={comment.id} className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
                                     <div className="flex items-start justify-between mb-2">
                                       <span className="font-medium text-sm text-gray-900 dark:text-white">{comment.author}</span>
@@ -834,8 +1140,12 @@ export default function CitizenPortal() {
                                       </Button>
                                     </div>
                                   </div>
-                                ))}
-                              </div>
+                                    ))
+                                  ) : (
+                                    <p className="text-gray-500 dark:text-gray-400 text-center py-4 text-sm">No comments yet. Be the first to comment!</p>
+                                  )}
+                                </div>
+                              )}
 
                               {/* Add Comment */}
                               <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
@@ -1246,6 +1556,203 @@ export default function CitizenPortal() {
                         </DialogContent>
                       </Dialog>
                     ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              {/* Business Events Section */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.8 }}
+                className="mt-8"
+              >
+                <Card className="border-0 bg-white dark:bg-gray-800 shadow-xl hover:shadow-2xl transition-shadow duration-300">
+                  <CardHeader className="bg-gradient-to-r from-purple-50 to-transparent border-b border-gray-200 dark:border-gray-700 pb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
+                        <CardTitle className="text-xl font-bold text-gray-900 dark:text-white">Business Events</CardTitle>
+                      </div>
+                      <Link href="/citizen/events">
+                        <Button size="sm" variant="outline" className="border-2">
+                          <ArrowRight className="h-4 w-4 mr-2" />
+                          View All
+                        </Button>
+                      </Link>
+                    </div>
+                    <CardDescription className="text-sm text-gray-600 dark:text-gray-300">Discover and register for local business events</CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-4 sm:p-6">
+                    {isLoadingEvents ? (
+                      <div className="text-center py-8">
+                        <RefreshCw className="h-8 w-8 animate-spin text-gray-400 mx-auto mb-4" />
+                        <p className="text-gray-500 dark:text-gray-400 text-sm">Loading events...</p>
+                      </div>
+                    ) : events.length === 0 ? (
+                      <div className="text-center py-8">
+                        <Calendar className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+                        <p className="text-gray-500 dark:text-gray-400 text-sm">No events available at this time.</p>
+                        <Link href="/citizen/events">
+                          <Button size="sm" variant="outline" className="mt-4">
+                            Browse All Events
+                          </Button>
+                        </Link>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {events.slice(0, 3).map((event) => (
+                          <Dialog
+                            key={event.id}
+                            open={isEventDialogOpen && selectedEvent?.id === event.id}
+                            onOpenChange={(open) => {
+                              setIsEventDialogOpen(open);
+                              if (open) {
+                                setSelectedEvent(event);
+                              } else {
+                                setSelectedEvent(null);
+                                setRegistrationNotes("");
+                              }
+                            }}
+                          >
+                            <DialogTrigger asChild>
+                              <motion.div
+                                whileHover={{ y: -2, scale: 1.01 }}
+                                className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-md transition-all duration-200 bg-gradient-to-r from-white to-purple-50/30 dark:from-gray-800 dark:to-purple-900/10 cursor-pointer group"
+                                onClick={() => {
+                                  setSelectedEvent(event);
+                                  setIsEventDialogOpen(true);
+                                }}
+                              >
+                                <div className="flex items-start gap-3">
+                                  <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-purple-100 dark:bg-purple-900/30">
+                                    <Calendar className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-start justify-between gap-2 mb-1">
+                                      <h4 className="font-semibold text-sm text-gray-900 dark:text-white leading-snug group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                                        {event.title}
+                                      </h4>
+                                      <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs flex-shrink-0">
+                                        Approved
+                                      </Badge>
+                                    </div>
+                                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-2 line-clamp-2">
+                                      {event.description}
+                                    </p>
+                                    <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
+                                      <span className="flex items-center gap-1">
+                                        <Building2 className="h-3 w-3" />
+                                        {event.business_name}
+                                      </span>
+                                      <span className="flex items-center gap-1">
+                                        <Calendar className="h-3 w-3" />
+                                        {event.date}
+                                      </span>
+                                      <span className="flex items-center gap-1">
+                                        <Clock className="h-3 w-3" />
+                                        {event.time}
+                                      </span>
+                                      <span className="flex items-center gap-1">
+                                        <MapPin className="h-3 w-3" />
+                                        {event.location}
+                                      </span>
+                                      <span className="flex items-center gap-1">
+                                        <Users className="h-3 w-3" />
+                                        {event.attendees}{event.maxAttendees ? `/${event.maxAttendees}` : ''}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                              <DialogHeader>
+                                <DialogTitle>{event.title}</DialogTitle>
+                                <DialogDescription>{event.business_name}</DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <div>
+                                  <h3 className="font-semibold mb-2">Event Details</h3>
+                                  <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div>
+                                      <span className="font-medium text-slate-700 dark:text-slate-300">Date:</span>
+                                      <p className="text-slate-600 dark:text-slate-400">{event.date}</p>
+                                    </div>
+                                    <div>
+                                      <span className="font-medium text-slate-700 dark:text-slate-300">Time:</span>
+                                      <p className="text-slate-600 dark:text-slate-400">{event.time}</p>
+                                    </div>
+                                    <div>
+                                      <span className="font-medium text-slate-700 dark:text-slate-300">Location:</span>
+                                      <p className="text-slate-600 dark:text-slate-400">{event.location}</p>
+                                    </div>
+                                    <div>
+                                      <span className="font-medium text-slate-700 dark:text-slate-300">Attendees:</span>
+                                      <p className="text-slate-600 dark:text-slate-400">
+                                        {event.attendees}{event.maxAttendees ? `/${event.maxAttendees}` : ''}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div>
+                                  <h3 className="font-semibold mb-2">Description</h3>
+                                  <p className="text-slate-600 dark:text-slate-400 whitespace-pre-wrap text-sm">
+                                    {event.description}
+                                  </p>
+                                </div>
+                                {event.status === 'approved' && (
+                                  <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+                                    <div className="space-y-3">
+                                      <div>
+                                        <label className="text-sm font-medium">Notes (optional)</label>
+                                        <Textarea
+                                          placeholder="Any additional notes or requirements..."
+                                          value={registrationNotes}
+                                          onChange={(e) => setRegistrationNotes(e.target.value)}
+                                          rows={3}
+                                          className="mt-1"
+                                        />
+                                      </div>
+                                      <Button
+                                        onClick={() => handleRegisterForEvent(event.id)}
+                                        disabled={isRegistering === event.id || (event.maxAttendees && event.attendees >= event.maxAttendees)}
+                                        className="bg-[#003153] hover:bg-[#003153]/90 w-full"
+                                      >
+                                        {isRegistering === event.id ? (
+                                          <>
+                                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                            Registering...
+                                          </>
+                                        ) : (
+                                          <>
+                                            <UserPlus className="h-4 w-4 mr-2" />
+                                            Register for Event
+                                          </>
+                                        )}
+                                      </Button>
+                                      {event.maxAttendees && event.attendees >= event.maxAttendees && (
+                                        <p className="text-sm text-red-600 dark:text-red-400 text-center">
+                                          This event is full
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        ))}
+                        {events.length > 3 && (
+                          <Link href="/citizen/events">
+                            <Button variant="outline" className="w-full">
+                              View All {events.length} Events
+                              <ArrowRight className="h-4 w-4 ml-2" />
+                            </Button>
+                          </Link>
+                        )}
                       </div>
                     )}
                   </CardContent>

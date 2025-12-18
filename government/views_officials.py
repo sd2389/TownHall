@@ -115,3 +115,10 @@ def update_government_official_permissions_view(request, official_id):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+
+
+
+
+
+
+

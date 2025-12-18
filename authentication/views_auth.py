@@ -16,7 +16,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from .models import UserProfile
-from .serializers import LoginSerializer, SignupSerializer
+from .serializers import LoginSerializer, SignupSerializer, AdminLoginSerializer
 from citizen.models import CitizenProfile
 from businessowner.models import BusinessOwnerProfile
 from government.models import GovernmentOfficial
@@ -212,7 +212,7 @@ def logout_view(request):
 @throttle_classes([LoginThrottle])
 def admin_login_view(request):
     """Handle admin login"""
-    serializer = LoginSerializer(data=request.data)
+    serializer = AdminLoginSerializer(data=request.data)
     if not serializer.is_valid():
         return Response({
             'error': 'Validation failed',
@@ -245,5 +245,6 @@ def admin_login_view(request):
             'is_superuser': True,
         }
     }, status=status.HTTP_200_OK)
+
 
 

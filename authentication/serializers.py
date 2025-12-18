@@ -36,6 +36,16 @@ class LoginSerializer(serializers.Serializer):
     )
 
 
+class AdminLoginSerializer(serializers.Serializer):
+    """Serializer for admin login endpoint"""
+    email = serializers.EmailField(required=True)
+    password = serializers.CharField(
+        required=True,
+        style={'input_type': 'password'},
+        write_only=True
+    )
+
+
 class SignupSerializer(serializers.Serializer):
     """Serializer for signup endpoint"""
     # Basic fields

@@ -32,7 +32,7 @@ interface Department {
 }
 
 export default function AdminDepartments() {
-  const { token } = useAuth();
+  const [adminToken, setAdminToken] = useState<string | null>(null);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
@@ -46,20 +46,35 @@ export default function AdminDepartments() {
     contact_phone: "",
   });
 
+  // Get admin token from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('admin_token');
+      setAdminToken(token);
+    }
+  }, []);
+
   const fetchDepartments = useCallback(async () => {
     try {
+      // Since the endpoint has AllowAny for GET, we can call it without auth
+      // But we'll include the token if available for consistency
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (adminToken) {
+        headers['Authorization'] = `Token ${adminToken}`;
+      }
+      
       const response = await fetch(`${API_BASE_URL}/government/departments/`, {
-        headers: {
-          'Authorization': `Token ${adminToken}`,
-          'Content-Type': 'application/json',
-        },
+        headers,
       });
 
       if (response.ok) {
         const data = await response.json();
         setDepartments(data);
       } else {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({ error: 'Failed to fetch departments' }));
         console.error('Error fetching departments:', errorData);
         alert(`Error: ${errorData.error || 'Failed to fetch departments'}`);
       }
@@ -72,10 +87,8 @@ export default function AdminDepartments() {
   }, [adminToken]);
 
   useEffect(() => {
-    if (adminToken) {
-      fetchDepartments();
-    }
-  }, [adminToken, fetchDepartments]);
+    fetchDepartments();
+  }, [fetchDepartments]);
 
   const handleCreateDepartment = async () => {
     if (!formData.name.trim()) {
@@ -83,8 +96,13 @@ export default function AdminDepartments() {
       return;
     }
 
+    if (!adminToken) {
+      alert('Authentication required');
+      return;
+    }
+
     try {
-      const response = await fetch(`${API_BASE_URL}/government/departments/create/`, {
+      const response = await fetch(`${API_BASE_URL}/government/departments/`, {
         method: 'POST',
         headers: {
           'Authorization': `Token ${adminToken}`,
@@ -124,6 +142,11 @@ export default function AdminDepartments() {
       return;
     }
 
+    if (!adminToken) {
+      alert('Authentication required');
+      return;
+    }
+
     try {
       const response = await fetch(`${API_BASE_URL}/government/departments/${editingDepartment.id}/`, {
         method: 'PUT',
@@ -154,8 +177,13 @@ export default function AdminDepartments() {
       return;
     }
 
+    if (!adminToken) {
+      alert('Authentication required');
+      return;
+    }
+
     try {
-      const response = await fetch(`${API_BASE_URL}/government/departments/${deptId}/delete/`, {
+      const response = await fetch(`${API_BASE_URL}/government/departments/${deptId}/`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Token ${adminToken}`,

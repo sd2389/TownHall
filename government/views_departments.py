@@ -20,11 +20,20 @@ def list_departments_view(request):
     """List departments (GET) or create department (POST)"""
     if request.method == 'GET':
         try:
+            # Allow GET requests without authentication
             departments = Department.objects.all().order_by('name')
-            data = [format_department_response(dept) for dept in departments]
+            data = []
+            for dept in departments:
+                try:
+                    data.append(format_department_response(dept))
+                except Exception as e:
+                    logger.warning(f"Error formatting department {dept.id}: {str(e)}")
+                    # Continue with other departments even if one fails
+                    continue
+            
             return Response(data, status=status.HTTP_200_OK)
         except Exception as e:
-            logger.error(f"Error listing departments: {str(e)}")
+            logger.error(f"Error listing departments: {str(e)}", exc_info=True)
             return Response({
                 'error': f'An error occurred: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -26,6 +26,71 @@ TownHall/
 └── setup.md         # This file
 ```
 
+## Frontend Structure
+
+### Frontend Directory Structure
+
+```
+frontend/
+├── src/
+│   ├── app/                # Next.js app directory (routing, layout, server components)
+│   │   ├── layout.tsx      # App-wide root layout, global providers
+│   │   ├── page.tsx        # Root landing page
+│   │   ├── auth/           # Authentication pages (login, signup, forgot-password)
+│   │   ├── dashboard/      # Dashboard pages for different user roles
+│   │   ├── [dynamic]/      # Dynamic routes (e.g., [id], [slug])
+│   │   ├── api/            # (Optional) API routes (Next.js API handlers)
+│   │   └── ...             # Additional route segments as needed
+│   ├── components/         # Reusable React components (UI, forms, modals, navigation)
+│   ├── lib/                # Utility functions and shared logic (e.g. file validation)
+│   ├── pages/              # (Legacy/optional) Next.js pages directory, if needed
+│   ├── hooks/              # Custom React hooks
+│   ├── context/            # React context providers for global state
+│   ├── services/           # API service layer for backend communication
+│   ├── styles/             # CSS modules and global styles
+│   ├── config/             # App-wide configuration (constants, env handlers)
+│   ├── layouts/            # Layout components used by app/ subtree
+│   └── assets/             # Static assets (images, fonts, icons)
+├── public/                 # Public static files served at root
+├── package.json            # Node.js dependencies and scripts
+├── next.config.js          # Next.js configuration
+└── tsconfig.json           # TypeScript configuration (if using TypeScript)
+```
+
+#### `app/` Subdirectory Example
+
+```
+frontend/src/app/
+├── layout.tsx           # Root layout file (providers, global UI shells)
+├── page.tsx             # Root landing page
+├── auth/
+│   ├── login/page.tsx   # Login page
+│   ├── signup/page.tsx  # Signup page
+│   └── ...              # Other auth related pages (reset, verify)
+├── dashboard/
+│   ├── page.tsx         # Dashboard index
+│   ├── citizen/page.tsx # Citizen dashboard
+│   ├── admin/page.tsx   # Admin dashboard
+│   └── ...              # Role-based dashboards
+├── [townId]/
+│   └── page.tsx         # Dynamic town route (e.g., /123)
+└── api/
+    └── ...              # Next.js API endpoints (if any)
+```
+
+- **app/**: Entry point for Next.js App Router. Organizes UI, layouts, and routing.
+    - `layout.tsx`: Root layout and global providers.
+    - `page.tsx`: Root index/landing page.
+    - `auth/`: Authentication-related pages and flows.
+    - `dashboard/`: Role-specific dashboards.
+    - `[param]/`: Dynamic routes using URL params.
+    - `api/`: (If used) API endpoints handled by Next.js.
+
+> This structure is modular, scalable, and supports complex enterprise requirements in a maintainable way.
+
+
+
+
 ## Quick Start
 
 ### 1. Clone the Repository

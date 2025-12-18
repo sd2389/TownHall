@@ -8,20 +8,82 @@ from django.db import transaction
 from django.utils import timezone
 
 
-@api_view(['GET'])
+@api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
 def active_towns_view(request):
-    """Get all active towns for dropdown"""
-    towns = Town.objects.filter(is_active=True).order_by('name')
-    data = [
-        {
-            'id': town.id,
-            'name': town.name,
-            'state': town.state
-        }
-        for town in towns
-    ]
-    return Response(data, status=status.HTTP_200_OK)
+    """Get all active towns for dropdown (GET) or create new town (POST - admin only)"""
+    if request.method == 'GET':
+        towns = Town.objects.filter(is_active=True).order_by('name')
+        data = [
+            {
+                'id': town.id,
+                'name': town.name,
+                'state': town.state,
+                'is_active': town.is_active,
+                'zip_codes': town.zip_codes or []
+            }
+            for town in towns
+        ]
+        return Response(data, status=status.HTTP_200_OK)
+    
+    elif request.method == 'POST':
+        # Require authentication for POST
+        if not request.user.is_authenticated:
+            return Response({
+                'error': 'Authentication required'
+            }, status=status.HTTP_401_UNAUTHORIZED)
+        
+        # Only superusers can create towns
+        if not request.user.is_superuser:
+            return Response({
+                'error': 'Only administrators can create towns'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        name = request.data.get('name', '').strip()
+        state = request.data.get('state', '').strip()
+        zip_codes = request.data.get('zip_codes', [])
+        
+        if not name or not state:
+            return Response({
+                'error': 'Town name and state are required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check if town already exists
+        if Town.objects.filter(name__iexact=name, state__iexact=state).exists():
+            return Response({
+                'error': 'A town with this name and state already exists'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Generate slug from name
+        from django.utils.text import slugify
+        slug = slugify(name)
+        
+        # Ensure slug is unique
+        base_slug = slug
+        counter = 1
+        while Town.objects.filter(slug=slug).exists():
+            slug = f"{base_slug}-{counter}"
+            counter += 1
+        
+        # Create town
+        town = Town.objects.create(
+            name=name,
+            slug=slug,
+            state=state,
+            zip_codes=zip_codes if isinstance(zip_codes, list) else [],
+            is_active=True
+        )
+        
+        return Response({
+            'message': 'Town created successfully',
+            'town': {
+                'id': town.id,
+                'name': town.name,
+                'state': town.state,
+                'is_active': town.is_active,
+                'zip_codes': town.zip_codes or []
+            }
+        }, status=status.HTTP_201_CREATED)
 
 
 @api_view(['GET'])

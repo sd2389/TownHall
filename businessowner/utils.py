@@ -138,11 +138,11 @@ def create_booking_notification(business_owner, service, citizen, booking_date, 
     )
 
 
-def format_license_response(license_obj):
+def format_license_response(license_obj, include_government_details=False):
     """
     Format license object for API response
     """
-    return {
+    data = {
         'id': license_obj.id,
         'license_type': license_obj.license_type,
         'license_number': license_obj.license_number,
@@ -151,7 +151,26 @@ def format_license_response(license_obj):
         'expiry_date': license_obj.expiry_date.strftime('%Y-%m-%d') if license_obj.expiry_date else None,
         'description': license_obj.description,
         'created_at': license_obj.created_at.strftime('%Y-%m-%d'),
+        'fee': float(license_obj.fee) if license_obj.fee else None,
+        'fee_paid': license_obj.fee_paid,
+        'renewal_required': license_obj.renewal_required,
+        'attachments': license_obj.attachments if license_obj.attachments else [],
     }
+    
+    # Include government review details if requested
+    if include_government_details:
+        data['review_comment'] = license_obj.review_comment
+        data['review_date'] = license_obj.review_date.strftime('%Y-%m-%d %H:%M') if license_obj.review_date else None
+        data['reviewed_by'] = {
+            'id': license_obj.reviewed_by.id,
+            'name': license_obj.reviewed_by.user.get_full_name() or license_obj.reviewed_by.user.username,
+            'position': license_obj.reviewed_by.position,
+        } if license_obj.reviewed_by else None
+        data['business_name'] = license_obj.business_owner.business_name
+        data['business_owner'] = license_obj.business_owner.user.get_full_name() or license_obj.business_owner.user.username
+        data['business_address'] = license_obj.business_owner.business_address
+    
+    return data
 
 
 def format_event_response(event, include_registrations=False):
@@ -214,5 +233,6 @@ def format_notification_response(notification):
         'related_license_id': notification.related_license.id if notification.related_license else None,
         'related_event_id': notification.related_event.id if notification.related_event else None,
     }
+
 
 

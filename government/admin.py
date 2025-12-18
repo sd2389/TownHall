@@ -1,5 +1,8 @@
 from django.contrib import admin
-from .models import GovernmentOfficial, Department, Position, Service, Announcement, ComplaintResponse
+from .models import (
+    GovernmentOfficial, Department, Position, Service, Announcement, 
+    ComplaintResponse, BillProposal, BillComment, BillVote
+)
 
 
 @admin.register(GovernmentOfficial)
@@ -200,4 +203,51 @@ class ComplaintResponseAdmin(admin.ModelAdmin):
     list_filter = ('complaint_type', 'status', 'created_at')
     search_fields = ('complaint_id', 'response_text', 'official__user__email')
     readonly_fields = ('created_at',)
+    ordering = ('-created_at',)
+
+
+@admin.register(BillProposal)
+class BillProposalAdmin(admin.ModelAdmin):
+    list_display = ('title', 'department', 'status', 'priority', 'support_count', 'oppose_count', 'created_by', 'created_at')
+    list_filter = ('status', 'priority', 'department', 'created_at')
+    search_fields = ('title', 'description', 'department__name')
+    readonly_fields = ('created_at', 'updated_at', 'published_at', 'support_count', 'oppose_count', 'views', 'comment_count')
+    date_hierarchy = 'created_at'
+    ordering = ('-created_at',)
+    
+    fieldsets = (
+        ('Bill Information', {
+            'fields': ('title', 'description', 'summary', 'department', 'town', 'priority')
+        }),
+        ('Status', {
+            'fields': ('status', 'published_at', 'review_deadline', 'implementation_date')
+        }),
+        ('Engagement', {
+            'fields': ('support_count', 'oppose_count', 'views', 'comment_count')
+        }),
+        ('Metadata', {
+            'fields': ('tags', 'attachments', 'created_by')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+@admin.register(BillComment)
+class BillCommentAdmin(admin.ModelAdmin):
+    list_display = ('bill', 'user', 'likes', 'created_at')
+    list_filter = ('created_at', 'is_edited')
+    search_fields = ('comment_text', 'bill__title', 'user__email')
+    readonly_fields = ('created_at', 'updated_at', 'edited_at')
+    ordering = ('-created_at',)
+
+
+@admin.register(BillVote)
+class BillVoteAdmin(admin.ModelAdmin):
+    list_display = ('bill', 'user', 'vote_type', 'created_at')
+    list_filter = ('vote_type', 'created_at')
+    search_fields = ('bill__title', 'user__email')
+    readonly_fields = ('created_at', 'updated_at')
     ordering = ('-created_at',)

@@ -21,7 +21,10 @@ urlpatterns = [
     # Business Complaints - RESTful
     # GET /business/complaints/ - List complaints
     # POST /business/complaints/ - Create complaint
+    # GET /business/complaints/<id>/ - Get complaint details
+    # PATCH /business/complaints/<id>/ - Update complaint (government only)
     path('complaints/', views_complaints.list_business_complaints_view, name='complaints_list'),
+    path('complaints/<int:complaint_id>/', views_complaints.business_complaint_detail_view, name='complaint_detail'),
     
     # Government Review (for government officials) - RESTful
     # GET /business/applications/?status=pending - List pending applications

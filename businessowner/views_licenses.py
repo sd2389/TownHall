@@ -14,6 +14,8 @@ from .utils import (
     create_license_notification, format_license_response
 )
 from government.utils import get_user_town, filter_by_town
+from government.models import GovernmentOfficial
+from django.utils import timezone
 import uuid
 from datetime import date, timedelta
 import logging
@@ -102,51 +104,6 @@ def list_licenses_view(request):
             return Response({
                 'error': f'An error occurred: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    """Create a new license/permit application (for government review)"""
-    try:
-        is_business_owner, profile, business_profile = check_business_owner_access(request.user)
-        
-        if not is_business_owner:
-            return Response({
-                'error': 'Only business owners can create license applications'
-            }, status=status.HTTP_403_FORBIDDEN)
-        
-        if not business_profile:
-            return Response({
-                'error': 'Business profile not found'
-            }, status=status.HTTP_404_NOT_FOUND)
-        
-        town = get_user_town(request.user)
-        if not town:
-            return Response({
-                'error': 'Business must be associated with a town'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        is_valid, license_type, error = validate_required_field(request.data, 'license_type')
-        if not is_valid:
-            return Response({'error': error}, status=status.HTTP_400_BAD_REQUEST)
-        
-        description = request.data.get('description', '').strip()
-        
-        license_number = f"LIC-{uuid.uuid4().hex[:8].upper()}"
-        
-        license_obj = BusinessLicense.objects.create(
-            business_owner=business_profile,
-            license_type=license_type,
-            license_number=license_number,
-            status='pending',
-            description=description,
-        )
-        
-        return Response({
-            'message': 'License application created successfully',
-            'license': format_license_response(license_obj)
-        }, status=status.HTTP_201_CREATED)
-    except Exception as e:
-        logger.error(f"Error creating license application: {str(e)}")
-        return Response({
-            'error': f'An error occurred: {str(e)}'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['GET'])
@@ -163,30 +120,26 @@ def list_pending_applications_view(request):
         
         # Filter by status=pending from query params
         status_filter = request.query_params.get('status', 'pending')
-        licenses = filter_by_town(
-            BusinessLicense.objects.filter(status=status_filter),
-            request.user
-        ).select_related('business_owner', 'business_owner__user', 'business_owner__user__userprofile')
+        user_town = get_user_town(request.user)
         
-        licenses = licenses.filter(
-            business_owner__user__userprofile__town=get_user_town(request.user)
-        )
+        if not user_town and not request.user.is_superuser:
+            return Response({
+                'error': 'You must be associated with a town to view applications'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        licenses = BusinessLicense.objects.filter(status=status_filter)
+        
+        # Filter by town through the business owner relationship
+        if not request.user.is_superuser:
+            licenses = licenses.filter(
+                business_owner__user__userprofile__town=user_town
+            )
+        
+        licenses = licenses.select_related('business_owner', 'business_owner__user', 'business_owner__user__userprofile')
         
         licenses = licenses.order_by('-created_at')
         
-        data = []
-        for license_obj in licenses:
-            data.append({
-                'id': license_obj.id,
-                'license_type': license_obj.license_type,
-                'license_number': license_obj.license_number,
-                'status': license_obj.status,
-                'description': license_obj.description,
-                'created_at': license_obj.created_at.strftime('%Y-%m-%d'),
-                'business_name': license_obj.business_owner.business_name,
-                'business_owner': license_obj.business_owner.user.get_full_name() or license_obj.business_owner.user.username,
-                'business_address': license_obj.business_owner.business_address,
-            })
+        data = [format_license_response(license_obj, include_government_details=True) for license_obj in licenses]
         
         return Response(data, status=status.HTTP_200_OK)
     except Exception as e:
@@ -225,25 +178,39 @@ def review_license_application_view(request, license_id):
                 'error': 'Action must be "approve" or "reject"'
             }, status=status.HTTP_400_BAD_REQUEST)
         
+        # Get government official
+        try:
+            government_official = GovernmentOfficial.objects.get(user=request.user)
+        except GovernmentOfficial.DoesNotExist:
+            government_official = None
+        
+        review_comment = request.data.get('review_comment', '').strip()
+        fee = request.data.get('fee', None)
+        expiry_days = request.data.get('expiry_days', 365)  # Default 1 year
+        
         if action == 'approve':
             license_obj.status = 'approved'
             license_obj.issue_date = date.today()
-            license_obj.expiry_date = date.today() + timedelta(days=365)
+            license_obj.expiry_date = date.today() + timedelta(days=int(expiry_days))
+            if fee:
+                try:
+                    license_obj.fee = float(fee)
+                except (ValueError, TypeError):
+                    pass
         else:
             license_obj.status = 'rejected'
         
+        # Set government review information
+        license_obj.reviewed_by = government_official
+        license_obj.review_comment = review_comment
+        license_obj.review_date = timezone.now()
         license_obj.save()
         
         create_license_notification(license_obj.business_owner, license_obj, action)
         
         return Response({
             'message': f'License application {action}d successfully',
-            'license': {
-                'id': license_obj.id,
-                'status': license_obj.status,
-                'issue_date': license_obj.issue_date.strftime('%Y-%m-%d') if license_obj.issue_date else None,
-                'expiry_date': license_obj.expiry_date.strftime('%Y-%m-%d') if license_obj.expiry_date else None,
-            }
+            'license': format_license_response(license_obj)
         }, status=status.HTTP_200_OK)
     except Exception as e:
         logger.error(f"Error reviewing license application: {str(e)}")

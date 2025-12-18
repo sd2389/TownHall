@@ -25,7 +25,8 @@ import {
   Clock,
   ChevronDown,
   Phone,
-  UserCheck
+  UserCheck,
+  Gavel
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -92,25 +93,32 @@ export default function PortalNavigation({ currentUserType, userName }: PortalNa
       switch (userRole) {
         case "citizen":
           return [
+            { name: "Dashboard", href: "/citizen", icon: BarChart3 },
             { name: "Complaints", href: "/citizen/complaints", icon: FileText },
+            { name: "Bills", href: "/citizen/bills", icon: Gavel },
             { name: "Services", href: "/citizen/services", icon: ClipboardList },
+            { name: "Events", href: "/citizen/events", icon: Calendar },
             { name: "Notifications", href: "/citizen/notifications", icon: Bell }
           ];
         case "business":
           return [
+            { name: "Dashboard", href: "/business", icon: BarChart3 },
             { name: "Applications", href: "/business/applications", icon: ClipboardList },
             { name: "Licenses", href: "/business/licenses", icon: CreditCard },
             { name: "Permits", href: "/business/permits", icon: CheckCircle },
-            { name: "Events", href: "/business/events", icon: Calendar }
+            { name: "Events", href: "/business/events", icon: Calendar },
+            { name: "Announcements", href: "/business/announcements", icon: Bell },
+            { name: "Bills", href: "/business/bills", icon: Gavel }
           ];
         case "government":
           return [
             { name: "Dashboard", href: "/government", icon: BarChart3 },
             { name: "Complaints", href: "/government/complaints", icon: FileText },
             { name: "Business Applications", href: "/government/business-applications", icon: Building2 },
+            { name: "Events", href: "/government/events", icon: Calendar },
             { name: "Announcements", href: "/government/announcements", icon: Bell },
-            { name: "Users", href: "/government/users", icon: UserCheck },
-            { name: "Reports", href: "/government/reports", icon: TrendingUp }
+            { name: "Bill Proposals", href: "/government/bills", icon: Gavel },
+            { name: "Users", href: "/government/users", icon: UserCheck }
           ];
         default:
           return [];

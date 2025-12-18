@@ -41,6 +41,83 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import { businessApi } from "@/lib/api";
 import React, { useState, useEffect } from "react";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+
+// Create Application Form Component
+function CreateApplicationForm({ onSuccess }: { onSuccess: () => void }) {
+  const [licenseType, setLicenseType] = useState("");
+  const [description, setDescription] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!licenseType.trim()) {
+      toast({
+        title: "Error",
+        description: "License type is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await businessApi.licenses.create({
+        license_type: licenseType,
+        description: description.trim(),
+      });
+      toast({
+        title: "Success",
+        description: "Application submitted successfully",
+      });
+      onSuccess();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to submit application",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <Label htmlFor="license_type">License/Permit Type *</Label>
+        <Input
+          id="license_type"
+          value={licenseType}
+          onChange={(e) => setLicenseType(e.target.value)}
+          placeholder="e.g., Business License, Operating Permit, etc."
+          required
+        />
+      </div>
+      <div>
+        <Label htmlFor="description">Description</Label>
+        <Textarea
+          id="description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Provide details about your application..."
+          rows={4}
+        />
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="outline" onClick={() => onSuccess()}>
+          Cancel
+        </Button>
+        <Button type="submit" className="bg-[#003153] hover:bg-[#003153]/90" disabled={isSubmitting}>
+          {isSubmitting ? "Submitting..." : "Submit Application"}
+        </Button>
+      </div>
+    </form>
+  );
+}
 
 export default function BusinessApplications() {
   const { user } = useAuth();
@@ -68,18 +145,30 @@ export default function BusinessApplications() {
           id: license.id,
           title: license.license_type,
           type: license.license_type,
+          license_number: license.license_number || '',
           status: license.status,
           applicationDate: license.created_at,
           approvalDate: license.issue_date || null,
-          fee: "N/A", // Fee not in API yet
+          fee: license.fee ? `$${parseFloat(license.fee).toFixed(2)}` : 'N/A',
+          fee_paid: license.fee_paid || false,
           description: license.description || '',
           category: "License",
-          assignedTo: "Business Licensing Dept", // Default
+          assignedTo: license.reviewed_by ? `${license.reviewed_by.name} (${license.reviewed_by.position})` : "Business Licensing Dept",
           estimatedResolution: license.status === 'approved' ? 'Completed' : 
                                license.status === 'rejected' ? 'Rejected' : 'Pending Review',
-          documents: [], // Not in API yet
-          requirements: [], // Not in API yet
-          comments: [], // Not in API yet
+          review_comment: license.review_comment || '',
+          review_date: license.review_date || null,
+          reviewed_by: license.reviewed_by || null,
+          attachments: license.attachments || [],
+          renewal_required: license.renewal_required || false,
+          documents: license.attachments || [],
+          requirements: [],
+          comments: license.review_comment ? [{
+            id: 1,
+            author: license.reviewed_by?.name || 'Government Official',
+            date: license.review_date || license.review_date,
+            text: license.review_comment
+          }] : [],
           expiry_date: license.expiry_date,
         }));
         setApplications(mappedApplications);
@@ -158,16 +247,25 @@ export default function BusinessApplications() {
                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Business Applications</h1>
                 <p className="text-gray-600 dark:text-gray-300 mt-2">Track and manage your business applications and permits</p>
               </div>
-              <Button 
-                className="bg-[#003153] hover:bg-[#003153]/90"
-                onClick={() => {
-                  // TODO: Open create application dialog
-                  alert('Create application feature coming soon');
-                }}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Submit New Application
-              </Button>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button className="bg-[#003153] hover:bg-[#003153]/90">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Submit New Application
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Submit New Application</DialogTitle>
+                    <DialogDescription>
+                      Create a new license or permit application for government review
+                    </DialogDescription>
+                  </DialogHeader>
+                  <CreateApplicationForm onSuccess={() => {
+                    window.location.reload();
+                  }} />
+                </DialogContent>
+              </Dialog>
             </div>
           </motion.div>
 
@@ -349,23 +447,57 @@ export default function BusinessApplications() {
                               </div>
                             )}
                             <div>
+                              <span className="font-medium text-gray-900 dark:text-white">Application #:</span>
+                              <p className="text-gray-600 dark:text-gray-300">{application.license_number || 'N/A'}</p>
+                            </div>
+                            <div>
                               <span className="font-medium text-gray-900 dark:text-white">Fee:</span>
                               <p className="text-gray-600 dark:text-gray-300">{application.fee}</p>
                             </div>
+                            {application.fee_paid && (
+                              <div>
+                                <span className="font-medium text-green-600 dark:text-green-400">Payment Status:</span>
+                                <p className="text-green-600 dark:text-green-400">Paid</p>
+                              </div>
+                            )}
                             <div>
                               <span className="font-medium text-gray-900 dark:text-white">Status:</span>
                               <Badge className={`${getStatusColor(application.status)} text-xs ml-2`}>
                                 {application.status.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
                               </Badge>
                             </div>
+                            {application.renewal_required && (
+                              <div>
+                                <span className="font-medium text-orange-600 dark:text-orange-400">Renewal:</span>
+                                <p className="text-orange-600 dark:text-orange-400">Required</p>
+                              </div>
+                            )}
                           </div>
                         </div>
 
                         {/* Description */}
                         <div>
                           <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Description</h4>
-                          <p className="text-gray-600 dark:text-gray-300">{application.description}</p>
+                          <p className="text-gray-600 dark:text-gray-300">{application.description || 'No description provided'}</p>
                         </div>
+
+                        {/* Government Review Information */}
+                        {application.review_comment && (
+                          <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                            <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Government Review</h4>
+                            <p className="text-gray-600 dark:text-gray-300 mb-2">{application.review_comment}</p>
+                            {application.reviewed_by && (
+                              <p className="text-sm text-gray-500 dark:text-gray-400">
+                                Reviewed by: {application.reviewed_by.name} ({application.reviewed_by.position})
+                              </p>
+                            )}
+                            {application.review_date && (
+                              <p className="text-sm text-gray-500 dark:text-gray-400">
+                                Review Date: {new Date(application.review_date).toLocaleDateString()}
+                              </p>
+                            )}
+                          </div>
+                        )}
 
                         {/* Assigned Department */}
                         <div>

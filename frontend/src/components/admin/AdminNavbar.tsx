@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 interface AdminNavbarProps {
-  currentPage?: 'dashboard' | 'users' | 'towns' | 'reports' | 'settings';
+  currentPage?: 'dashboard' | 'users' | 'towns' | 'reports';
 }
 
 export default function AdminNavbar({ currentPage = 'dashboard' }: AdminNavbarProps) {
@@ -27,7 +27,8 @@ export default function AdminNavbar({ currentPage = 'dashboard' }: AdminNavbarPr
     { id: 'users', label: 'User Management', href: '/admin/users' },
     { id: 'towns', label: 'Towns', href: '/admin/towns' },
     { id: 'reports', label: 'Reports', href: '/admin/reports' },
-    { id: 'settings', label: 'Settings', href: '/admin/settings' },
+    // Settings hidden for now
+    // { id: 'settings', label: 'Settings', href: '/admin/settings' },
   ];
 
   return (

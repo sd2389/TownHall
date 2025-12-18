@@ -1,6 +1,6 @@
 "use client";
 
-import { Shield, Users, MapPin, FileText, Settings, Clock, LogOut, Building2, UserCheck } from "lucide-react";
+import { Shield, Users, MapPin, FileText, Clock, LogOut, Building2, UserCheck } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
-  currentPage?: 'dashboard' | 'users' | 'towns' | 'departments' | 'reports' | 'settings' | 'officials';
+  currentPage?: 'dashboard' | 'users' | 'towns' | 'departments' | 'reports' | 'officials';
 }
 
 export default function AdminLayout({ children, currentPage = 'dashboard' }: AdminLayoutProps) {
@@ -28,7 +28,8 @@ export default function AdminLayout({ children, currentPage = 'dashboard' }: Adm
     { id: 'towns', label: 'Towns', icon: MapPin, href: '/admin/towns' },
     { id: 'departments', label: 'Departments', icon: Building2, href: '/admin/departments' },
     { id: 'reports', label: 'Reports', icon: FileText, href: '/admin/reports' },
-    { id: 'settings', label: 'Settings', icon: Settings, href: '/admin/settings' },
+    // Settings hidden for now
+    // { id: 'settings', label: 'Settings', icon: Settings, href: '/admin/settings' },
   ];
 
   return (

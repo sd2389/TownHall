@@ -28,18 +28,42 @@ class BusinessLicense(models.Model):
         ('expired', 'Expired'),
     ]
     
-    business_owner = models.ForeignKey(BusinessOwnerProfile, on_delete=models.CASCADE)
+    business_owner = models.ForeignKey(BusinessOwnerProfile, on_delete=models.CASCADE, related_name='licenses')
     license_type = models.CharField(max_length=100)
     license_number = models.CharField(max_length=50, unique=True)
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='pending')
     issue_date = models.DateField(null=True, blank=True)
     expiry_date = models.DateField(null=True, blank=True)
     description = models.TextField(blank=True)
+    
+    # Government integration fields
+    reviewed_by = models.ForeignKey('government.GovernmentOfficial', on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_licenses')
+    review_comment = models.TextField(blank=True, help_text="Comments from government official during review")
+    review_date = models.DateTimeField(null=True, blank=True)
+    fee = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Application or renewal fee")
+    fee_paid = models.BooleanField(default=False)
+    attachments = models.JSONField(default=list, blank=True, help_text="List of attachment file paths/URLs")
+    renewal_required = models.BooleanField(default=False, help_text="Whether this license requires periodic renewal")
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['business_owner', 'status']),
+            models.Index(fields=['status', '-created_at']),
+        ]
+    
     def __str__(self):
         return f"{self.license_type} - {self.business_owner.business_name}"
+    
+    def is_expired(self):
+        """Check if license is expired"""
+        if self.expiry_date and self.status == 'approved':
+            from django.utils import timezone
+            return timezone.now().date() > self.expiry_date
+        return False
 
 
 class BusinessComplaint(models.Model):
@@ -59,13 +83,20 @@ class BusinessComplaint(models.Model):
     ]
     
     business_owner = models.ForeignKey(BusinessOwnerProfile, on_delete=models.CASCADE)
+    town = models.ForeignKey('towns.Town', on_delete=models.CASCADE, related_name='business_complaints', null=True, blank=True)
     title = models.CharField(max_length=200)
     description = models.TextField()
     category = models.CharField(max_length=100)
+    location = models.CharField(max_length=200, blank=True, help_text="Location of the issue")
     priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='medium')
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='pending')
+    assigned_to = models.CharField(max_length=200, blank=True, help_text="Department or person assigned")
+    estimated_resolution = models.CharField(max_length=200, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
     
     def __str__(self):
         return f"{self.title} - {self.business_owner.business_name}"

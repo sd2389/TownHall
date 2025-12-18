@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Building2, Users, Shield, Menu, X, Home, Phone } from "lucide-react";
+import { Building2, Users, Shield, Menu, X, Home, Phone, Calendar } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
 
@@ -99,8 +99,10 @@ export default function Header({ userType, userName, userEmail }: HeaderProps) {
           </Link>
           {userType === "citizen" ? (
             <>
+              <Link href="/citizen"><Button variant="ghost" className="text-sm font-medium flex items-center gap-2"><Home className="h-4 w-4" />Dashboard</Button></Link>
               <Link href="/citizen/complaints"><Button variant="ghost" className="text-sm font-medium">My Complaints</Button></Link>
               <Link href="/citizen/services"><Button variant="ghost" className="text-sm font-medium">Services</Button></Link>
+              <Link href="/citizen/events"><Button variant="ghost" className="text-sm font-medium flex items-center gap-2"><Calendar className="h-4 w-4" />Events</Button></Link>
               <Link href="/citizen/notifications"><Button variant="ghost" className="text-sm font-medium">Notifications</Button></Link>
             </>
           ) : userType === "business" ? (
@@ -289,11 +291,17 @@ export default function Header({ userType, userName, userEmail }: HeaderProps) {
             </Link>
             {userType === "citizen" ? (
               <>
+                <Link href="/citizen" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start text-sm h-10 rounded-lg hover:bg-accent transition-colors flex items-center gap-2"><Home className="h-4 w-4" />Dashboard</Button>
+                </Link>
                 <Link href="/citizen/complaints" onClick={() => setIsMobileMenuOpen(false)}>
                   <Button variant="ghost" className="w-full justify-start text-sm h-10 rounded-lg hover:bg-accent transition-colors">My Complaints</Button>
                 </Link>
                 <Link href="/citizen/services" onClick={() => setIsMobileMenuOpen(false)}>
                   <Button variant="ghost" className="w-full justify-start text-sm h-10 rounded-lg hover:bg-accent transition-colors">Services</Button>
+                </Link>
+                <Link href="/citizen/events" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start text-sm h-10 rounded-lg hover:bg-accent transition-colors">Events</Button>
                 </Link>
                 <Link href="/citizen/notifications" onClick={() => setIsMobileMenuOpen(false)}>
                   <Button variant="ghost" className="w-full justify-start text-sm h-10 rounded-lg hover:bg-accent transition-colors">Notifications</Button>

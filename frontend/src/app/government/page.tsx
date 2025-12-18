@@ -139,14 +139,6 @@ export default function GovernmentPortal() {
       color: "bg-[#003153]",
       hoverColor: "hover:bg-[#003153]/90",
       href: "/government/users"
-    },
-    {
-      title: "Generate Report",
-      description: "Create analytical reports",
-      icon: FileBarChart,
-      color: "bg-[#003153]",
-      hoverColor: "hover:bg-[#003153]/90",
-      href: "/government/reports"
     }
   ];
 
@@ -760,68 +752,6 @@ export default function GovernmentPortal() {
             </motion.div>
           </div>
 
-          {/* Recent Reports */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.7 }}
-          >
-            <Card className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-              <CardHeader className="border-b border-slate-200 dark:border-slate-700">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-lg font-semibold text-slate-900 dark:text-white">Recent Reports</CardTitle>
-                    <CardDescription className="text-slate-600 dark:text-slate-400">Generated reports and analytics</CardDescription>
-                  </div>
-                  <Button size="sm" variant="outline" className="border-slate-300 dark:border-slate-600">
-                    <Plus className="h-4 w-4 mr-1" />
-                    Generate
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  {reports.map((report) => (
-                    <div key={report.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-2 flex-wrap">
-                            <h3 className="font-semibold text-slate-900 dark:text-white text-sm">{report.title}</h3>
-                            <Badge variant="outline" className="text-xs border-slate-300 dark:border-slate-600">{report.type}</Badge>
-                            <Badge className={`${getStatusColor(report.status)} text-xs px-2 py-0.5 border-0`}>
-                              {report.status}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              {report.date}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Eye className="h-3 w-3" />
-                              {report.views} views
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Download className="h-3 w-3" />
-                              {report.downloadCount} downloads
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <Button size="sm" variant="outline" className="h-8 border-slate-300 dark:border-slate-600">
-                            <Eye className="h-3 w-3" />
-                          </Button>
-                          <Button size="sm" variant="outline" className="h-8 border-slate-300 dark:border-slate-600">
-                            <Download className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
         </div>
       </div>
       </Layout>

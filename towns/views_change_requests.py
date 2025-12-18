@@ -225,3 +225,10 @@ def town_change_request_detail_action_view(request, request_id):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+
+
+
+
+
+
+
