@@ -4,11 +4,10 @@
 
 ## Team members and roles
 
-1) Yesha - Product Owner
-2) Jose - Scrum Master
-3) Smit - Developer
-4) Evan - Developer
-5) Nandni - QA and document manager
+1) Yesha - Product Owner and Scrum Master
+2) Smit - Developer
+3) Evan - Developer
+4) Nandni - QA and document manager
 
 
 
